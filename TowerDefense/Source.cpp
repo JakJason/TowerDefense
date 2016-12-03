@@ -129,7 +129,9 @@ int main(void)
 	int window_h = 16;
 	int window_w = 23;
 
-	int** map = Load_Map("map1", map_height, map_width);
+	int** map = Load_Map("map2", map_height, map_width);
+
+	int xyz = 11111000;
 
 	int min_pos_x = pos_0_x;
 	int min_pos_y = pos_0_y;
