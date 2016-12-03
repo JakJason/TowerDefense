@@ -1,0 +1,14 @@
+Map (40, 50) (1190, 850)
+MiniMap (1230, 50) (1560, 270)
+
+Grass 		11
+Road		21
+GrassRoad1	31
+GrassRoad2	32
+GrassRoad3	33
+GrassRoad4	34
+
+1560
+1230
+
+330
