@@ -18,6 +18,14 @@ typedef struct Tile
 
 } Tile;
 
+void Load_Tile_Bitmaps(ALLEGRO_BITMAP *tile_bitmaps[10]) {
+
+	tile_bitmaps[0] = al_load_bitmap("Bitmaps/Tiles/Empty.bmp");
+	tile_bitmaps[1] = al_load_bitmap("Bitmaps/Tiles/Grass.bmp");
+	tile_bitmaps[2] = al_load_bitmap("Bitmaps/Tiles/Road.bmp");
+
+}
+
 typedef struct Map
 {
 	int width;
@@ -54,28 +62,6 @@ Map Load_Map(string map_path)
 	}
 
 	return map;
-}
-
-void Draw_Map(Map map, ALLEGRO_BITMAP *tile_bitmaps[10], int map_x, int map_y) {
-	int ih;
-	int iw;
-	for (ih = 0; ih < map.height; ih++)
-	{
-		for (iw = 0; iw < map.width; iw++)
-		{
-			switch(map.tiles[ih][iw].type){
-			case 11:
-				al_draw_bitmap(tile_bitmaps[1], map_x + iw*map.tiles[ih][iw].width, map_y + ih*map.tiles[ih][iw].height, 0);
-				break;
-			case 21:
-				al_draw_bitmap(tile_bitmaps[2], map_x + iw*map.tiles[ih][iw].width, map_y + ih*map.tiles[ih][iw].height, 0);
-				break;
-			default:
-				al_draw_bitmap(tile_bitmaps[0], map_x + iw*map.tiles[ih][iw].width, map_y + ih*map.tiles[ih][iw].height, 0);
-				break;
-			}
-		}
-	}
 }
 		
 typedef struct Window 
@@ -120,9 +106,9 @@ Interface Load_Interface(string interface_path)
 	return interface;
 }
 
-void Draw_Interface(ALLEGRO_BITMAP *infc_bitmap)
+void Draw_Interface(Interface interface)
 {
-	al_draw_bitmap(infc_bitmap, 0, 0, 0);
+	al_draw_bitmap(interface.bitmap, 0, 0, 0);
 }
 
 void Draw_Minimap(Map map, Interface interface, int mini_map_x, int mini_map_y) {
@@ -158,10 +144,71 @@ void Draw_Minimap(Map map, Interface interface, int mini_map_x, int mini_map_y) 
 
 }
 
+bool Tile_in_Window(Tile tile, Interface interface) {
+	
+//	if ((tile.x     &&     ) ||
+//		(&&))
+//	{
+//		return 0;
+//	}
+	return 1;
+}
+
+void Draw_Map(Map map, Interface interface, ALLEGRO_BITMAP *tile_bitmaps[10], int map_x, int map_y) {
+	int ih;
+	int iw;
+	for (ih = 0; ih < map.height; ih++)
+	{
+		for (iw = 0; iw < map.width; iw++)
+		{
+			if (Tile_in_Window(map.tiles[ih][iw], interface))
+			{
+				switch (map.tiles[ih][iw].type) {
+				case 11:
+					al_draw_bitmap(tile_bitmaps[1], map_x + iw*map.tiles[ih][iw].width, map_y + ih*map.tiles[ih][iw].height, 0);
+					break;
+				case 21:
+					al_draw_bitmap(tile_bitmaps[2], map_x + iw*map.tiles[ih][iw].width, map_y + ih*map.tiles[ih][iw].height, 0);
+					break;
+				default:
+					al_draw_bitmap(tile_bitmaps[0], map_x + iw*map.tiles[ih][iw].width, map_y + ih*map.tiles[ih][iw].height, 0);
+					break;
+				}
+			}
+		}
+	}
+}
+
+typedef struct Cursor
+{
+	int x;
+	int y;
+
+	ALLEGRO_BITMAP *bitmap;
+} Cursor;
+
+Cursor Load_Cursor(Interface interface)
+{
+	Cursor cursor;
+
+	cursor.x = interface.main_map.width / 2;
+	cursor.y = interface.main_map.height / 2;
+
+	return cursor;
+}
+
+void Draw_Cursor(Cursor cursor)
+{
+
+	al_draw_bitmap(cursor.bitmap, cursor.x, cursor.y, 0);
+
+}
+
 int main(void)
 {
 	bool keys[4] = { false, false, false, false };
 	bool done = false;
+	bool redraw = true;
 
 	al_init();
 	if (!al_init())																				//initialize Allegro
@@ -183,22 +230,32 @@ int main(void)
 
 	display = al_create_display(interface.width, interface.height); 							//create our display object
 	if (!display)																				//test display object
-		return -1;
+		return -2;
 
 	interface.bitmap = al_load_bitmap("Bitmaps\\Interface\\Interface.bmp");
 	if (!interface.bitmap)
-		return -2;
+		return -3;
 	al_convert_mask_to_alpha(interface.bitmap, al_map_rgb(255, 0, 255));
 
+	Cursor cursor = Load_Cursor(interface);
+	cursor.bitmap = al_load_bitmap("Bitmaps\\Interface\\Cursor.bmp");
+	if (!cursor.bitmap)
+		return -4;
+	al_convert_mask_to_alpha(cursor.bitmap, al_map_rgb(255, 0, 255));
+//	al_hide_mouse_cursor(display);
+
 	ALLEGRO_BITMAP *tile_bitmaps[10];
-	tile_bitmaps[0] = al_load_bitmap("Bitmaps/Tiles/Empty.bmp");
-	tile_bitmaps[1] = al_load_bitmap("Bitmaps/Tiles/Grass.bmp");
-	tile_bitmaps[2] = al_load_bitmap("Bitmaps/Tiles/Road.bmp");
+	Load_Tile_Bitmaps(tile_bitmaps);
 
 	event_queue = al_create_event_queue();
 	timer = al_create_timer(1.0 / FPS);
+
+	al_register_event_source(event_queue, al_get_display_event_source(display));
+	al_register_event_source(event_queue, al_get_mouse_event_source());
 	al_register_event_source(event_queue, al_get_keyboard_event_source());
 	al_register_event_source(event_queue, al_get_timer_event_source(timer));
+
+
 	al_start_timer(timer);
 
 	int map_x = interface.main_map.x;
@@ -250,6 +307,11 @@ int main(void)
 				break;
 			}
 		}
+		else if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
+		{
+			done = true;
+		}
+
 		else if (ev.type == ALLEGRO_EVENT_TIMER) {
 			if (map_y < interface.main_map.y) {
 				map_y += keys[UP] * 10;
@@ -269,14 +331,25 @@ int main(void)
 				map_x -= keys[RIGHT] * 10;
 				mini_map_x += keys[RIGHT];
 			}
+
+			redraw = true;
+		}
+		else if (ev.type == ALLEGRO_EVENT_MOUSE_AXES) {
+			cursor.x = ev.mouse.x;
+			cursor.y = ev.mouse.y;
+			redraw = true;
 		}
 
-		Draw_Map(map, tile_bitmaps, map_x, map_y);
-		Draw_Interface(interface.bitmap);
-		Draw_Minimap(map, interface, mini_map_x, mini_map_y);
 
-		al_flip_display();
-		al_clear_to_color(al_map_rgb(0, 0, 0));
+		if (redraw && al_is_event_queue_empty(event_queue)) {
+			redraw = false;
+			Draw_Map(map, interface, tile_bitmaps, map_x, map_y);
+			Draw_Interface(interface);
+			Draw_Minimap(map, interface, mini_map_x, mini_map_y);
+			Draw_Cursor(cursor);
+			al_flip_display();
+			al_clear_to_color(al_map_rgb(0, 0, 0));
+		}
 	}
 
 	al_destroy_bitmap(interface.bitmap);
