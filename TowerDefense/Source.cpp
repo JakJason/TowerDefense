@@ -232,9 +232,25 @@ void Draw_Cursor(Cursor cursor)
 
 bool Cursor_On_MainMap(Cursor cursor, Interface interface) 
 {
-	if ((cursor.x >= interface.main_map.x && cursor.x <=interface.main_map.x + interface.main_map.width) &&
+	if ((cursor.x >= interface.main_map.x && cursor.x <= interface.main_map.x + interface.main_map.width) &&
 		(cursor.y >= interface.main_map.y && cursor.y <= interface.main_map.y + interface.main_map.height))
+	{
+		printf("on_map \n");
 		return true;
+	}
+
+
+	return false;
+}
+
+bool Cursor_on_Item(Cursor cursor, int x, int y, int width, int height)
+{
+	if ((cursor.x >= x && cursor.x <= x + width) &&
+		(cursor.y >= y && cursor.y <= y + height))
+	{
+		printf("on_item \n");
+		return true;
+	}
 	return false;
 }
 
@@ -507,7 +523,15 @@ int main(void)
 			switch (ev.mouse.button){
 			case 1:
 				cursor.buttons[0] = true;
-				Set_Cityhall_Active(&cityhall);
+
+				Set_Cityhall_InActive(&cityhall);
+
+				if (Cursor_On_MainMap(cursor, interface) == true){
+					if (Cursor_on_Item(cursor, cityhall.pos_x + map_x, cityhall.pos_y + map_y, cityhall.width, cityhall.height) == true) {
+						Set_Cityhall_Active(&cityhall);
+					}
+				}
+				
 				break;
 			case 2:
 				cursor.buttons[1] = true;
@@ -545,15 +569,6 @@ int main(void)
 				map_x -= keys[RIGHT] * 10;
 				mini_map_x += keys[RIGHT];
 			}
-
-			if (Cursor_On_MainMap(cursor, interface)==true) {
-				printf("%i ", 1);
-			}
-			else
-			{
-				printf("%i ", 0);
-			}
-
 
 			redraw = true;
 		}
