@@ -221,6 +221,12 @@ Cursor Load_Cursor(Interface interface)
 {
 	Cursor cursor;
 
+	cursor.bitmapIdle = al_load_bitmap("Bitmaps\\Interface\\Cursor.bmp");
+	al_convert_mask_to_alpha(cursor.bitmapIdle, al_map_rgb(255, 0, 255));
+
+	cursor.bitmapActive = al_load_bitmap("Bitmaps\\Interface\\CursorActive.bmp");
+	al_convert_mask_to_alpha(cursor.bitmapActive, al_map_rgb(255, 0, 255));
+
 	cursor.x = interface.main_map.width / 2;
 	cursor.y = interface.main_map.height / 2;
 
@@ -263,6 +269,7 @@ bool Cursor_on_Item(Cursor cursor, int x, int y, int width, int height)
 	return false;
 }
 
+
 typedef void( * Action)(int, int);
 
 typedef struct Panel {
@@ -300,6 +307,9 @@ typedef struct Goblin
 {
 	ALLEGRO_BITMAP *bitmap;
 	ALLEGRO_BITMAP *bitmap_active;
+
+	int tile_pos_x;
+	int tile_pos_y;
 
 	int pos_x;
 	int pos_y;
@@ -339,8 +349,8 @@ typedef struct Bunker
 	int pos_x;
 	int pos_y;
 
-	int width;
-	int height;
+	int width = 2;
+	int height = 2;
 
 	int range;
 
@@ -388,6 +398,12 @@ typedef struct Lab
 Cityhall Load_Cityhall(Map map)
 {
 	Cityhall cityhall;
+
+	cityhall.bitmap = al_load_bitmap("Bitmaps\\GameObjects\\Cityhall.bmp");
+	al_convert_mask_to_alpha(cityhall.bitmap, al_map_rgb(255, 0, 255));
+
+	cityhall.bitmap_active = al_load_bitmap("Bitmaps\\GameObjects\\Halo_Big.bmp");
+	al_convert_mask_to_alpha(cityhall.bitmap_active, al_map_rgb(255, 0, 255));
 	
 	cityhall.health_current = cityhall.health_max;
 
@@ -432,7 +448,7 @@ void Set_Cityhall_InActive(Cityhall *cityhall)
 }
 
 
-Goblin Load_Goblin(int map_x, int map_y) {
+Goblin Load_Goblin(Map map, int map_x, int map_y) {
 	Goblin goblin;
 
 	goblin.bitmap = al_load_bitmap("Bitmaps\\GameObjects\\Goblin.bmp");
@@ -441,17 +457,23 @@ Goblin Load_Goblin(int map_x, int map_y) {
 	goblin.bitmap_active = al_load_bitmap("Bitmaps\\GameObjects\\Halo_Small.bmp");
 	al_convert_mask_to_alpha(goblin.bitmap_active, al_map_rgb(255, 0, 255));
 
-	goblin.pos_x = 0;
-	goblin.pos_y = 0;
+	goblin.tile_pos_x = 1;
+	goblin.tile_pos_y = 1;
+
+	goblin.pos_x = goblin.tile_pos_x*map.tiles[0][0].width + map_x;
+	goblin.pos_y = goblin.tile_pos_y*map.tiles[0][0].height + map_y;
+
+	goblin.width = goblin.width*map.tiles[0][0].width;
+	goblin.height = goblin.height*map.tiles[0][0].height;
 
 	return goblin;
 }
 
 void Draw_Goblin(Goblin goblin, Map map, int map_x, int map_y) {
 	if (goblin.status_active == 1) {
-		al_draw_bitmap(goblin.bitmap_active, goblin.pos_x + map_x, goblin.pos_y + map_y - 75, 0);
+		al_draw_bitmap(goblin.bitmap_active, goblin.pos_x + map_x, goblin.pos_y + map_y, 0);
 	}
-	al_draw_bitmap(goblin.bitmap, goblin.pos_x + map_x, goblin.pos_y + map_y - 75, 0);
+	al_draw_bitmap(goblin.bitmap, goblin.pos_x + map_x, goblin.pos_y + map_y, 0);
 }
 
 void Set_Goblin_Active(Goblin *goblin)
@@ -499,25 +521,8 @@ void Set_Rider_InActive(Rider *rider)
 }
 
 
-void Set_All_InActive(Cityhall *cityhall, list<Goblin> goblins, list<Bunker> bunkers, list<Rider> riders) {
-	Set_Cityhall_InActive(cityhall);
-
-	for (list<Goblin>::iterator iter = goblins.begin(); iter != goblins.end(); iter++) {
-		Set_Goblin_InActive(&*iter);
-	}
-
-	for (list<Bunker>::iterator iter = bunkers.begin(); iter != bunkers.end(); iter++) {
-		Set_Bunker_InActive(&*iter);
-	}
-
-	for (list<Rider>::iterator iter = riders.begin(); iter != riders.end(); iter++) {
-		Set_Rider_InActive(&*iter);
-	}
-}
-
 int main(void)
 {
-
 	// variables
 	bool keys[4] = { false, false, false, false };
 	bool done = false;
@@ -553,14 +558,6 @@ int main(void)
 
 	// Cursor
 	Cursor cursor = Load_Cursor(interface);
-	cursor.bitmapIdle = al_load_bitmap("Bitmaps\\Interface\\Cursor.bmp");
-	if (!cursor.bitmapIdle)
-		return -4;
-	al_convert_mask_to_alpha(cursor.bitmapIdle, al_map_rgb(255, 0, 255));
-	cursor.bitmapActive = al_load_bitmap("Bitmaps\\Interface\\CursorActive.bmp");
-	if (!cursor.bitmapActive)
-		return -4;
-	al_convert_mask_to_alpha(cursor.bitmapActive, al_map_rgb(255, 0, 255));
 	al_hide_mouse_cursor(display);
 
 	// Tile bitmaps
@@ -583,20 +580,11 @@ int main(void)
 	int mini_map_y = interface.mini_map.y;
 
 	// Game objects
-	// Cityhall
 	Cityhall cityhall = Load_Cityhall(map);
-	cityhall.bitmap = al_load_bitmap("Bitmaps\\GameObjects\\Cityhall.bmp");
-	if (!cityhall.bitmap)
-		return -5;
-	cityhall.bitmap_active = al_load_bitmap("Bitmaps\\GameObjects\\Halo_Big.bmp");
-	if (!cityhall.bitmap_active)
-		return -5;
-	al_convert_mask_to_alpha(cityhall.bitmap, al_map_rgb(255, 0, 255));
-	al_convert_mask_to_alpha(cityhall.bitmap_active, al_map_rgb(255, 0, 255));
 
 	list<Goblin> goblins;
-
-
+	Goblin goblin = Load_Goblin(map, map_x, map_y);
+	goblins.push_front(goblin);
 
 	list<Bunker> bunkers;
 
@@ -661,11 +649,39 @@ int main(void)
 				cursor.buttons[0] = true;
 
 				if (Cursor_On_MainMap(cursor, interface) == true){
+
+					for (list<Goblin>::iterator iter = goblins.begin(); iter != goblins.end(); iter++) {
+						if (Cursor_on_Item(cursor, iter->pos_x + map_x, iter->pos_y + map_y, iter->width, iter->height) == true) {
+							Set_Goblin_Active(&*iter);
+						}
+						else {
+							Set_Goblin_InActive(&*iter);
+						}
+					}
+
+					for (list<Bunker>::iterator iter = bunkers.begin(); iter != bunkers.end(); iter++) {
+						if (Cursor_on_Item(cursor, iter->pos_x + map_x, iter->pos_y + map_y, iter->width, iter->height) == true) {
+							Set_Bunker_Active(&*iter);
+						}
+						else {
+							Set_Bunker_InActive(&*iter);
+						}
+					}
+
+					for (list<Rider>::iterator iter = riders.begin(); iter != riders.end(); iter++) {
+						if (Cursor_on_Item(cursor, iter->pos_x + map_x, iter->pos_y + map_y, iter->width, iter->height) == true) {
+							Set_Rider_Active(&*iter);
+						}
+						else {
+							Set_Rider_InActive(&*iter);
+						}
+					}
+
 					if (Cursor_on_Item(cursor, cityhall.pos_x + map_x, cityhall.pos_y + map_y, cityhall.width, cityhall.height) == true) {
 						Set_Cityhall_Active(&cityhall);
 					}
 					else {
-						Set_All_InActive(&cityhall, goblins, bunkers, riders);
+						Set_Cityhall_InActive(&cityhall);
 					}
 				}
 				
@@ -715,7 +731,9 @@ int main(void)
 			Draw_Map(map, tile_bitmaps, map_x, map_y);
 			Draw_Cityhall(cityhall, map, map_x, map_y);
 
-
+			for (list<Goblin>::iterator iter = goblins.begin(); iter != goblins.end(); iter++) {
+				Draw_Goblin(*iter, map, map_x, map_y);
+			}
 			Draw_Interface(interface);
 			Draw_Minimap(map, interface, mini_map_x, mini_map_y);
 			Draw_Cursor(cursor);
@@ -723,8 +741,8 @@ int main(void)
 			al_flip_display();
 			al_clear_to_color(al_map_rgb(0, 0, 0));
 		}
+//		printf("%i %i \n", map_x, map_y);
 	}
-
 	al_destroy_bitmap(interface.bitmap);
 	al_destroy_event_queue(event_queue);
 	al_destroy_display(display);
