@@ -6,10 +6,8 @@
 #include <cstdio>
 #include <list>
 
-
 using namespace std;
 enum KEYS { UP, DOWN, LEFT, RIGHT };
-
 
 typedef struct Tile
 {
@@ -68,64 +66,55 @@ typedef struct Cursor
 	ALLEGRO_BITMAP *bitmapIdle;
 	ALLEGRO_BITMAP *bitmapActive;
 
-} Cursor;
-typedef void( * Action)(Map, int, int);	
+} Cursor;	
 typedef struct Panel {
 
+	int x = 1111;
 
 	// function 00
-	Action *action00 = NULL;
-	ALLEGRO_BITMAP *bitmap00;
-	int x00;
-	int y00;
+	ALLEGRO_BITMAP *bitmap00 = NULL;
+	int x00 = 1240;
+	int y00 = 460;
 
 	// function 01
-	Action *action01 = NULL;
-	ALLEGRO_BITMAP *bitmap01;
-	int x01;
-	int y01;
+	ALLEGRO_BITMAP *bitmap01 = NULL;
+	int x01 = x00 + 105;
+	int y01 = y00;
 
 	// function 02
-	Action *action02 = NULL;
-	ALLEGRO_BITMAP *bitmap02;
-	int x02;
-	int y02;
+	ALLEGRO_BITMAP *bitmap02 = NULL;
+	int x02 = x01 + 105;
+	int y02 = y00;
 
 	// function 10
-	Action *action10 = NULL;
-	ALLEGRO_BITMAP *bitmap10;
-	int x10;
-	int y10;
+	ALLEGRO_BITMAP *bitmap10 = NULL;
+	int x10 = x00;
+	int y10 = y00 + 105;
 
 	// function 11
-	Action *action11 = NULL;
-	ALLEGRO_BITMAP *bitmap11;
-	int x11;
-	int y11;
+	ALLEGRO_BITMAP *bitmap11 = NULL;
+	int x11 = x01 ;
+	int y11 = y10;
 
 	// function 12
-	Action *action12 = NULL;
-	ALLEGRO_BITMAP *bitmap12;
-	int x12;
-	int y12;
+	ALLEGRO_BITMAP *bitmap12 = NULL;
+	int x12 = x02;
+	int y12 = y10;
 
 	// function 20
-	Action action20 = NULL;
-	ALLEGRO_BITMAP *bitmap20;
-	int x20;
-	int y20;
+	ALLEGRO_BITMAP *bitmap20 = NULL;
+	int x20 = x00;
+	int y20 = y10 + 105;
 
 	// function 21
-	Action *action21 = NULL;
-	ALLEGRO_BITMAP *bitmap21;
-	int x21;
-	int y21;
+	ALLEGRO_BITMAP *bitmap21 = NULL;
+	int x21 = x01;
+	int y21 = y20;
 
 	// function 22
-	Action *action22 = NULL;
-	ALLEGRO_BITMAP *bitmap22;
-	int x22;
-	int y22;
+	ALLEGRO_BITMAP *bitmap22 = NULL;
+	int x22 = x02;
+	int y22 = y20;
 
 } Panel;
 typedef struct Goblin
@@ -150,6 +139,7 @@ typedef struct Goblin
 typedef struct Rider
 {
 	ALLEGRO_BITMAP *bitmap;
+	ALLEGRO_BITMAP *bitmap_active;
 
 	int pos_x;
 	int pos_y;
@@ -168,6 +158,7 @@ typedef struct Rider
 typedef struct Bunker
 {
 	ALLEGRO_BITMAP *bitmap;
+	ALLEGRO_BITMAP *bitmap_active;
 
 	int pos_x;
 	int pos_y;
@@ -217,6 +208,15 @@ typedef struct Lab
 	Panel panel;
 
 } Lab;
+
+Panel Load_Panel_Goblin() {
+
+	Panel panel;
+
+
+	return panel;
+};
+
 
 Map Load_Map(string map_path)
 {
@@ -280,10 +280,10 @@ Cursor Load_Cursor(Interface interface)
 {
 	Cursor cursor;
 
-	cursor.bitmapIdle = al_load_bitmap("Bitmaps\\Interface\\Cursor.bmp");
+	cursor.bitmapIdle = al_load_bitmap("Bitmaps\\Interface\\Cursor\\Cursor.bmp");
 	al_convert_mask_to_alpha(cursor.bitmapIdle, al_map_rgb(255, 0, 255));
 
-	cursor.bitmapActive = al_load_bitmap("Bitmaps\\Interface\\CursorActive.bmp");
+	cursor.bitmapActive = al_load_bitmap("Bitmaps\\Interface\\Cursor\\CursorActive.bmp");
 	al_convert_mask_to_alpha(cursor.bitmapActive, al_map_rgb(255, 0, 255));
 
 	cursor.x = interface.main_map.width / 2;
@@ -295,10 +295,10 @@ Cityhall Load_Cityhall(Map map)
 {
 	Cityhall cityhall;
 
-	cityhall.bitmap = al_load_bitmap("Bitmaps\\GameObjects\\Cityhall.bmp");
+	cityhall.bitmap = al_load_bitmap("Bitmaps\\GameObjects\\CityHall\\Cityhall.bmp");
 	al_convert_mask_to_alpha(cityhall.bitmap, al_map_rgb(255, 0, 255));
 
-	cityhall.bitmap_active = al_load_bitmap("Bitmaps\\GameObjects\\Halo_Big.bmp");
+	cityhall.bitmap_active = al_load_bitmap("Bitmaps\\GameObjects\\Halo\\Halo_Big.bmp");
 	al_convert_mask_to_alpha(cityhall.bitmap_active, al_map_rgb(255, 0, 255));
 	
 	cityhall.health_current = cityhall.health_max;
@@ -323,15 +323,18 @@ Cityhall Load_Cityhall(Map map)
 	map.tiles[map.ch_y][map.ch_x + 2].type = 22;
 	map.tiles[map.ch_y + 1][map.ch_x + 2].type = 22;
 	map.tiles[map.ch_y + 2][map.ch_x + 2].type = 22;
+
+	cityhall.panel.bitmap00 = al_load_bitmap("Bitmaps/Interface/Icons/Icon_2.bmp");
+
 	return cityhall;
 }
 Goblin Load_Goblin(Map map, int tile_x, int tile_y) {
 	Goblin goblin;
 
-	goblin.bitmap = al_load_bitmap("Bitmaps\\GameObjects\\Goblin.bmp");
+	goblin.bitmap = al_load_bitmap("Bitmaps\\GameObjects\\Goblin\\Goblin.bmp");
 	al_convert_mask_to_alpha(goblin.bitmap, al_map_rgb(255, 0, 255));
 
-	goblin.bitmap_active = al_load_bitmap("Bitmaps\\GameObjects\\Halo_Small.bmp");
+	goblin.bitmap_active = al_load_bitmap("Bitmaps\\GameObjects\\Halo\\Halo_Small.bmp");
 	al_convert_mask_to_alpha(goblin.bitmap_active, al_map_rgb(255, 0, 255));
 
 	goblin.tile_pos_x = tile_x;
@@ -342,6 +345,9 @@ Goblin Load_Goblin(Map map, int tile_x, int tile_y) {
 
 	goblin.width = goblin.width*map.tiles[0][0].width;
 	goblin.height = goblin.height*map.tiles[0][0].height;
+
+	goblin.panel.bitmap00 = al_load_bitmap("Bitmaps/Interface/Icons/EmptyIcon.bmp");
+	goblin.panel.x = 2222;
 
 	return goblin;
 }
@@ -370,6 +376,10 @@ void Draw_Interface(Interface interface)
 void Draw_Minimap(Map map, Interface interface, int mini_map_x, int mini_map_y) {
 	int ih;
 	int iw;
+
+	al_draw_filled_rectangle(interface.mini_map.x, interface.mini_map.y,
+							interface.mini_map.x + interface.mini_map.width, interface.mini_map.y + interface.mini_map.height,
+							al_map_rgb(0, 0, 0));
 	for (ih = 0; ih < map.height; ih++)
 	{
 		for (iw = 0; iw < map.width; iw++)
@@ -446,20 +456,70 @@ void Draw_Cursor(Cursor cursor)
 		al_draw_bitmap(cursor.bitmapIdle, cursor.x, cursor.y, 0);
 	}
 }
-void Draw_Cityhall(Cityhall cityhall, Map map, int map_x, int map_y)
-{
-	if (cityhall.status_active == 1)
-	{
-		al_draw_bitmap(cityhall.bitmap_active, cityhall.pos_x + map_x, cityhall.pos_y + map_y, 0);
-	}
-		
+void Draw_Cityhall(Cityhall cityhall, Map map, int map_x, int map_y){
 	al_draw_bitmap(cityhall.bitmap, cityhall.pos_x + map_x, cityhall.pos_y + map_y, 0);
 }
-void Draw_Goblin(Goblin goblin, Map map, int map_x, int map_y) {
-	if (goblin.status_active == 1) {
-		al_draw_bitmap(goblin.bitmap_active, goblin.pos_x + map_x, goblin.pos_y + map_y, 0);
-	}
+void Draw_Active_Cityhall(Cityhall cityhall, Map map, int map_x, int map_y){
+	al_draw_bitmap(cityhall.bitmap_active, cityhall.pos_x + map_x, cityhall.pos_y + map_y, 0);
+	al_draw_bitmap(cityhall.bitmap, cityhall.pos_x + map_x, cityhall.pos_y + map_y, 0);
+}
+void Draw_Goblin(Goblin goblin, Map map, int map_x, int map_y){
 	al_draw_bitmap(goblin.bitmap, goblin.pos_x + map_x, goblin.pos_y + map_y, 0);
+}
+void Draw_Active_Goblin(Goblin goblin, Map map, int map_x, int map_y) {
+	al_draw_bitmap(goblin.bitmap_active, goblin.pos_x + map_x, goblin.pos_y + map_y, 0);
+	al_draw_bitmap(goblin.bitmap, goblin.pos_x + map_x, goblin.pos_y + map_y, 0);
+}
+void Draw_Bunker(Bunker bunker, Map map, int map_x, int map_y){
+	al_draw_bitmap(bunker.bitmap, bunker.pos_x + map_x, bunker.pos_y + map_y, 0);
+}
+void Draw_Active_Bunker(Bunker bunker, Map map, int map_x, int map_y){
+	al_draw_bitmap(bunker.bitmap_active, bunker.pos_x + map_x, bunker.pos_y + map_y, 0);
+	al_draw_bitmap(bunker.bitmap, bunker.pos_x + map_x, bunker.pos_y + map_y, 0);
+}
+void Draw_Rider(Rider rider, Map map, int map_x, int map_y) {
+	al_draw_bitmap(rider.bitmap, rider.pos_x + map_x, rider.pos_y + map_y, 0);
+}
+void Draw_Active_Rider(Rider rider, Map map, int map_x, int map_y) {
+	al_draw_bitmap(rider.bitmap_active, rider.pos_x + map_x, rider.pos_y + map_y, 0);
+	al_draw_bitmap(rider.bitmap, rider.pos_x + map_x, rider.pos_y + map_y, 0);
+}
+void Draw_Panel(Panel *panel, Interface interface) {
+
+	al_draw_filled_rectangle(interface.status.x, interface.status.y,
+		interface.status.x + interface.status.width, interface.status.y + interface.status.height,
+		al_map_rgb(0, 0, 0));
+	al_draw_filled_rectangle(interface.actions.x, interface.actions.y,
+		interface.actions.x + interface.actions.width, interface.actions.y + interface.actions.height,
+		al_map_rgb(0, 0, 0));
+
+	if (panel->bitmap00 != NULL) {
+		al_draw_bitmap(panel->bitmap00, panel->x00, panel->y00, 0);
+	}
+	if (panel->bitmap01 != NULL) {
+		al_draw_bitmap(panel->bitmap00, panel->x01, panel->y01, 0);
+	}
+	if (panel->bitmap02 != NULL) {
+		al_draw_bitmap(panel->bitmap00, panel->x02, panel->y02, 0);
+	}
+	if (panel->bitmap10 != NULL) {
+		al_draw_bitmap(panel->bitmap00, panel->x10, panel->y10, 0);
+	}
+	if (panel->bitmap11 != NULL) {
+		al_draw_bitmap(panel->bitmap00, panel->x11, panel->y11, 0);
+	}
+	if (panel->bitmap12 != NULL) {
+		al_draw_bitmap(panel->bitmap00, panel->x12, panel->y12, 0);
+	}
+	if (panel->bitmap20 != NULL) {
+		al_draw_bitmap(panel->bitmap00, panel->x20, panel->y20, 0);
+	}
+	if (panel->bitmap21 != NULL) {
+		al_draw_bitmap(panel->bitmap00, panel->x21, panel->y21, 0);
+	}
+	if (panel->bitmap22 != NULL) {
+		al_draw_bitmap(panel->bitmap00, panel->x22, panel->y22, 0);
+	}
 }
 
 bool Cursor_On_MainMap(Cursor cursor, Interface interface) 
@@ -467,7 +527,7 @@ bool Cursor_On_MainMap(Cursor cursor, Interface interface)
 	if ((cursor.x >= interface.main_map.x && cursor.x <= interface.main_map.x + interface.main_map.width) &&
 		(cursor.y >= interface.main_map.y && cursor.y <= interface.main_map.y + interface.main_map.height))
 	{
-		printf("on_map \n");
+		//printf("on_map \n");
 		return true;
 	}
 	return false;
@@ -487,45 +547,48 @@ bool Cursor_on_Item(Cursor cursor, int x, int y, int width, int height)
 	if ((cursor.x >= x && cursor.x <= x + width) &&
 		(cursor.y >= y && cursor.y <= y + height))
 	{
-		printf("on_item \n");
+		//printf("on_item \n");
 		return true;
 	}
 	return false;
 }
 
-void Action_CreateGoblin(Map map, int x, int y) {
+void Action_Create_Goblin(Map map, int x, int y) {
 	Goblin goblin = Load_Goblin(map, x, y);
 }
+void Action_Go_Goblin(Map map, int x, int y) {
 
-void Set_Cityhall_Active(Cityhall *cityhall) 
+}
+
+void Set_Cityhall_Active(Cityhall *cityhall, Cityhall *active_cityhall)
 {
 	cityhall->status_active = 1;
 }
-void Set_Cityhall_InActive(Cityhall *cityhall)
+void Set_Cityhall_InActive(Cityhall *cityhall, Cityhall *active_cityhall)
 {
 	cityhall->status_active = 0;
 }
-void Set_Goblin_Active(Goblin *goblin)
+void Set_Goblin_Active(Goblin *goblin, Goblin *active_goblin)
 {
 	goblin->status_active = 1;
 }
-void Set_Goblin_InActive(Goblin *goblin)
+void Set_Goblin_InActive(Goblin *goblin, Goblin *active_goblin)
 {
 	goblin->status_active = 0;
 }
-void Set_Bunker_Active(Bunker *bunker)
+void Set_Bunker_Active(Bunker *bunker, Bunker *active_bunker)
 {
 	bunker->status_active = 1;
 }
-void Set_Bunker_InActive(Bunker *bunker)
+void Set_Bunker_InActive(Bunker *bunker, Bunker *active_bunker)
 {
 	bunker->status_active = 0;
 }
-void Set_Rider_Active(Rider *rider)
+void Set_Rider_Active(Rider *rider, Rider *active_rider)
 {
 	rider->status_active = 1;
 }
-void Set_Rider_InActive(Rider *rider)
+void Set_Rider_InActive(Rider *rider, Rider *active_rider)
 {
 	rider->status_active = 0;
 }
@@ -596,8 +659,14 @@ int main(void)
 	goblins.push_front(goblin);
 
 	list<Bunker> bunkers;
-
 	list<Rider> riders;
+
+	Goblin * active_goblin = NULL;
+	Bunker * active_bunker = NULL;
+	Rider * active_rider = NULL;
+	Cityhall * active_cityhall = NULL;
+
+	Panel * active_panel = NULL;
 
 	while (!done) {
 		ALLEGRO_EVENT ev;
@@ -656,47 +725,54 @@ int main(void)
 			switch (ev.mouse.button){
 			case 1:
 				cursor.buttons[0] = true;
-
 				if (Cursor_On_MainMap(cursor, interface) == true){
 
 					for (list<Goblin>::iterator iter = goblins.begin(); iter != goblins.end(); iter++) {
 						if (Cursor_on_Item(cursor, iter->pos_x + map_x, iter->pos_y + map_y, iter->width, iter->height) == true) {
-							Set_Goblin_Active(&*iter);
+							Set_Goblin_Active(&*iter, active_goblin);
+							active_goblin = &(*iter);
+							active_panel = &active_goblin->panel;
 						}
 						else {
-							Set_Goblin_InActive(&*iter);
+							Set_Goblin_InActive(&*iter, active_goblin);
+							active_goblin = NULL;
 						}
 					}
-
 					for (list<Bunker>::iterator iter = bunkers.begin(); iter != bunkers.end(); iter++) {
 						if (Cursor_on_Item(cursor, iter->pos_x + map_x, iter->pos_y + map_y, iter->width, iter->height) == true) {
-							Set_Bunker_Active(&*iter);
+							Set_Bunker_Active(&*iter, active_bunker);
+							active_bunker = &(*iter);
+							active_panel = &*(&iter->panel);
 						}
 						else {
-							Set_Bunker_InActive(&*iter);
+							Set_Bunker_InActive(&*iter, active_bunker);
+							active_bunker = NULL;
 						}
 					}
-
 					for (list<Rider>::iterator iter = riders.begin(); iter != riders.end(); iter++) {
 						if (Cursor_on_Item(cursor, iter->pos_x + map_x, iter->pos_y + map_y, iter->width, iter->height) == true) {
-							Set_Rider_Active(&*iter);
+							Set_Rider_Active(&*iter, active_rider);
+							active_rider = &(*iter);
+							active_panel = &(iter->panel);
 						}
 						else {
-							Set_Rider_InActive(&*iter);
+							Set_Rider_InActive(&*iter, active_rider);
+							active_rider = NULL;
 						}
 					}
-
 					if (Cursor_on_Item(cursor, cityhall.pos_x + map_x, cityhall.pos_y + map_y, cityhall.width, cityhall.height) == true) {
-						Set_Cityhall_Active(&cityhall);
+						Set_Cityhall_Active(&cityhall, active_cityhall);
+						active_cityhall = &cityhall;
+						active_panel = &active_cityhall->panel;
 					}
 					else {
-						Set_Cityhall_InActive(&cityhall);
+						Set_Cityhall_InActive(&cityhall, active_cityhall);
+						active_cityhall = NULL;
 					}
 				}
 				else if (Cursor_On_Panel(cursor, interface) == true) {
 
 				}
-				
 				
 				break;
 			case 2:
@@ -742,24 +818,56 @@ int main(void)
 			redraw = false;
 
 			Draw_Map(map, tile_bitmaps, map_x, map_y);
-			Draw_Cityhall(cityhall, map, map_x, map_y);
-
-			for (list<Goblin>::iterator iter = goblins.begin(); iter != goblins.end(); iter++) {
-				Draw_Goblin(*iter, map, map_x, map_y);
+			if (cityhall.status_active == 1) {
+				Draw_Active_Cityhall(cityhall, map, map_x, map_y);
+			}
+			else {
+				Draw_Cityhall(cityhall, map, map_x, map_y);
 			}
 
-//			for (list<Bunker>::iterator iter = bunkers.begin(); iter != bunkers.end(); iter++) {
-//				Draw_Bunker(*iter, map, map_x, map_y);
-//			}
+			for (list<Goblin>::iterator iter = goblins.begin(); iter != goblins.end(); iter++) {
+				if (iter->status_active == 1) {
+					Draw_Active_Goblin(*iter, map, map_x, map_y);
+				}
+				else {
+					Draw_Goblin(*iter, map, map_x, map_y);
+				}
+			}
 
-//			for (list<Rider>::iterator iter = riders.begin(); iter != riders.end(); iter++) {
-//				Draw_Rider(*iter, map, map_x, map_y);
-//			}
+			for (list<Bunker>::iterator iter = bunkers.begin(); iter != bunkers.end(); iter++) {
+				if (iter->status_active == 1) {
+					Draw_Active_Bunker(*iter, map, map_x, map_y);
+				}
+				else {
+					Draw_Bunker(*iter, map, map_x, map_y);
+				}
 
+			}
+
+			for (list<Rider>::iterator iter = riders.begin(); iter != riders.end(); iter++) {
+				if (iter->status_active == 1) {
+					Draw_Active_Rider(*iter, map, map_x, map_y);
+				}
+				else {
+					Draw_Rider(*iter, map, map_x, map_y);
+				}
+			}
+			
 			Draw_Interface(interface);
 			Draw_Minimap(map, interface, mini_map_x, mini_map_y);
+			if (active_cityhall != NULL || active_goblin != NULL || active_bunker != NULL || active_rider != NULL) {
+				Draw_Panel(active_panel, interface);
+				//printf("%i %i %i \n", active_panel->x, active_panel->x00, active_panel->y00);
+			}
+			else{
+				al_draw_filled_rectangle(interface.status.x, interface.status.y,
+										interface.status.x + interface.status.width, interface.status.y + interface.status.height,
+										al_map_rgb(0, 0, 0));
+				al_draw_filled_rectangle(interface.actions.x, interface.actions.y,
+										interface.actions.x + interface.actions.width, interface.actions.y + interface.actions.height,
+										al_map_rgb(0, 0, 0));
+			}
 			Draw_Cursor(cursor);
-
 			al_flip_display();
 			al_clear_to_color(al_map_rgb(0, 0, 0));
 		}
