@@ -9,6 +9,7 @@
 using namespace std;
 enum KEYS { UP, DOWN, LEFT, RIGHT };
 
+////////////////Structs///////////////
 typedef struct Tile
 {
 	int width = 50;
@@ -208,16 +209,9 @@ typedef struct Lab
 	Panel panel;
 
 } Lab;
+////////////////////////////////////////
 
-Panel Load_Panel_Goblin() {
-
-	Panel panel;
-
-
-	return panel;
-};
-
-
+////////////////Load///////////////////
 Map Load_Map(string map_path)
 {
 	Map map;
@@ -232,11 +226,11 @@ Map Load_Map(string map_path)
 
 	map.tiles = new Tile*[map.height];
 
-	for (int h = 0; h < map.height; h++)
+	for (h = 0; h < map.height; h++)
 	{
 		map.tiles[h] = new Tile[map.width];
 
-		for (int w = 0; w < map.width; w++)
+		for (w = 0; w < map.width; w++)
 		{
 			map.tiles[h][w].x = w;
 			map.tiles[h][w].y = h;
@@ -325,7 +319,8 @@ Cityhall Load_Cityhall(Map map)
 	map.tiles[map.ch_y + 2][map.ch_x + 2].type = 22;
 
 	cityhall.panel.bitmap00 = al_load_bitmap("Bitmaps/Interface/Icons/Icon_2.bmp");
-
+	cityhall.panel.bitmap01 = al_load_bitmap("Bitmaps/Interface/Icons/Icon_3.bmp");
+	cityhall.panel.bitmap02 = al_load_bitmap("Bitmaps/Interface/Icons/Icon_4.bmp");
 	return cityhall;
 }
 Goblin Load_Goblin(Map map, int tile_x, int tile_y) {
@@ -368,7 +363,9 @@ void Load_Tile_Bitmaps(ALLEGRO_BITMAP *tile_bitmaps[10]) {
 	tile_bitmaps[2] = al_load_bitmap("Bitmaps/Tiles/Road.bmp");
 
 }
+////////////////////////////////////////
 
+/////////////////Draw//////////////////
 void Draw_Interface(Interface interface)
 {
 	al_draw_bitmap(interface.bitmap, 0, 0, 0);
@@ -497,31 +494,33 @@ void Draw_Panel(Panel *panel, Interface interface) {
 		al_draw_bitmap(panel->bitmap00, panel->x00, panel->y00, 0);
 	}
 	if (panel->bitmap01 != NULL) {
-		al_draw_bitmap(panel->bitmap00, panel->x01, panel->y01, 0);
+		al_draw_bitmap(panel->bitmap01, panel->x01, panel->y01, 0);
 	}
 	if (panel->bitmap02 != NULL) {
-		al_draw_bitmap(panel->bitmap00, panel->x02, panel->y02, 0);
+		al_draw_bitmap(panel->bitmap02, panel->x02, panel->y02, 0);
 	}
 	if (panel->bitmap10 != NULL) {
-		al_draw_bitmap(panel->bitmap00, panel->x10, panel->y10, 0);
+		al_draw_bitmap(panel->bitmap10, panel->x10, panel->y10, 0);
 	}
 	if (panel->bitmap11 != NULL) {
-		al_draw_bitmap(panel->bitmap00, panel->x11, panel->y11, 0);
+		al_draw_bitmap(panel->bitmap11, panel->x11, panel->y11, 0);
 	}
 	if (panel->bitmap12 != NULL) {
-		al_draw_bitmap(panel->bitmap00, panel->x12, panel->y12, 0);
+		al_draw_bitmap(panel->bitmap12, panel->x12, panel->y12, 0);
 	}
 	if (panel->bitmap20 != NULL) {
-		al_draw_bitmap(panel->bitmap00, panel->x20, panel->y20, 0);
+		al_draw_bitmap(panel->bitmap20, panel->x20, panel->y20, 0);
 	}
 	if (panel->bitmap21 != NULL) {
-		al_draw_bitmap(panel->bitmap00, panel->x21, panel->y21, 0);
+		al_draw_bitmap(panel->bitmap21, panel->x21, panel->y21, 0);
 	}
 	if (panel->bitmap22 != NULL) {
-		al_draw_bitmap(panel->bitmap00, panel->x22, panel->y22, 0);
+		al_draw_bitmap(panel->bitmap22, panel->x22, panel->y22, 0);
 	}
 }
+/////////////////////////////////////////////
 
+//////////////////CursorPosition////////////////////
 bool Cursor_On_MainMap(Cursor cursor, Interface interface) 
 {
 	if ((cursor.x >= interface.main_map.x && cursor.x <= interface.main_map.x + interface.main_map.width) &&
@@ -552,14 +551,9 @@ bool Cursor_on_Item(Cursor cursor, int x, int y, int width, int height)
 	}
 	return false;
 }
+///////////////////////////////////////////////////////
 
-void Action_Create_Goblin(Map map, int x, int y) {
-	Goblin goblin = Load_Goblin(map, x, y);
-}
-void Action_Go_Goblin(Map map, int x, int y) {
-
-}
-
+////////////////Activation/Desactivation/////////////////////
 void Set_Cityhall_Active(Cityhall *cityhall, Cityhall *active_cityhall)
 {
 	cityhall->status_active = 1;
@@ -592,6 +586,104 @@ void Set_Rider_InActive(Rider *rider, Rider *active_rider)
 {
 	rider->status_active = 0;
 }
+///////////////////////////////////////////////////////////
+
+//////////////////Astar Pathfinding///////////////////////
+typedef struct node {
+	Tile tile;
+	node *parent = NULL;
+	int h = 0;
+	int g = 0;
+	int f = 0;
+	bool c = false;
+	node *adjacent[4] = { NULL, NULL, NULL, NULL };
+}node;
+void add_addjacent(node par, node **nodes, Map map)
+{
+	if ((par.tile.x - 1 >= 0 && par.tile.x - 1 <= map.width) && (par.tile.y >= 0 && par.tile.y <= map.height)) {
+		par.adjacent[0] = &nodes[par.tile.y][par.tile.x - 1];
+	}
+	if ((par.tile.x + 1 >= 0 && par.tile.x + 1 <= map.width) && (par.tile.y >= 0 && par.tile.y <= map.height)) {
+		par.adjacent[1] = &nodes[par.tile.y][par.tile.x + 1];
+	}
+	if ((par.tile.x >= 0 && par.tile.x <= map.width) && (par.tile.y - 1 >= 0 && par.tile.y - 1 <= map.height)) {
+		par.adjacent[2] = &nodes[par.tile.y - 1][par.tile.x];
+	}
+	if ((par.tile.x >= 0 && par.tile.x <= map.width) && (par.tile.y + 1 >= 0 && par.tile.y + 1 <= map.height)) {
+		par.adjacent[3] = &nodes[par.tile.y - 1][par.tile.x];
+	}
+}
+bool compare_nodes(node first, node second ) {
+	return (first.f <= second.f);
+}
+bool Node_in_List(node n, list<node> l)
+{
+	for (list<node>::iterator iter = l.begin(); iter != l.end(); iter++) {
+		if (iter->tile.x == n.tile.x && iter->tile.y == n.tile.y) return true;
+	}
+	return false;
+}
+node lowest_node(list<node> lista) {
+	lista.sort(compare_nodes);
+	node n = lista.front();
+	lista.pop_front;
+	return n;
+}
+void a_star_path(int t_start_x, int t_start_y, int t_end_x, int t_end_y, Map map)
+{
+	int h, w, main_h;
+	int hx = 2;
+	list<node> open;
+	list<node> closed;
+	node **nodes;
+	nodes = new node*[map.height];
+	for (h = 0; h < map.height; h++) {
+		nodes[h] = new node[map.width];
+		for (w = 0; w < map.width; w++) {
+			if (map.tiles[h][w].type == 11) {
+				nodes[h][w].h = fabs(map.tiles[t_end_y][t_end_x].x*hx - map.tiles[h][w].x*hx) + fabs(map.tiles[t_end_y][t_end_x].y*hx - map.tiles[h][w].y*hx);
+			}
+		}
+	}
+	node start = nodes[t_start_y][t_start_x];
+	
+	open.push_back(start);
+	node Q;
+	node N;
+	int new_g;
+
+	while (!open.empty()) {
+		Q = lowest_node(open);
+		add_addjacent(start, nodes, map);
+		Q.c = true;
+		if (Q.tile.x == t_end_x && Q.tile.y == t_end_y) break;
+
+		for (int i = 0; i < 4; i++) {
+			N = *Q.adjacent[i];
+			if (N.c == true || (N.tile.type % 10) == 1) continue;
+			else if (!Node_in_List(N, open)) {
+				open.push_back(N);
+				N.parent = &Q;
+				N.g = Q.g + 10;
+				N.f = N.h + N.g;
+			}
+			else {
+				new_g = Q.g + 10;
+				if (new_g < N.g) {
+					N.parent = &Q;
+					N.g = new_g;
+					N.f = N.h + N.g;
+				}
+			}
+		}
+		open.pop_front();
+	}
+
+
+
+
+}
+////////////////////////////////////////
 
 int main(void)
 {
@@ -668,10 +760,16 @@ int main(void)
 
 	Panel * active_panel = NULL;
 
+
+	//A_Star_Path(0,0, map.ch_x,map.ch_y, map);
+
+
 	while (!done) {
 		ALLEGRO_EVENT ev;
 		al_wait_for_event(event_queue, &ev);
 
+
+		//Events
 		if (ev.type == ALLEGRO_EVENT_KEY_DOWN)
 		{
 			switch (ev.keyboard.keycode)
@@ -814,6 +912,7 @@ int main(void)
 			redraw = true;
 		}
 
+		//Drawing 
 		if (redraw && al_is_event_queue_empty(event_queue)) {
 			redraw = false;
 
@@ -857,7 +956,6 @@ int main(void)
 			Draw_Minimap(map, interface, mini_map_x, mini_map_y);
 			if (active_cityhall != NULL || active_goblin != NULL || active_bunker != NULL || active_rider != NULL) {
 				Draw_Panel(active_panel, interface);
-				//printf("%i %i %i \n", active_panel->x, active_panel->x00, active_panel->y00);
 			}
 			else{
 				al_draw_filled_rectangle(interface.status.x, interface.status.y,
@@ -871,7 +969,6 @@ int main(void)
 			al_flip_display();
 			al_clear_to_color(al_map_rgb(0, 0, 0));
 		}
-//		printf("%i %i \n", map_x, map_y);
 	}
 	al_destroy_bitmap(interface.bitmap);
 	al_destroy_event_queue(event_queue);
