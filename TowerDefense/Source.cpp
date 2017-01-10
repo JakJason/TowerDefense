@@ -9,7 +9,7 @@
 using namespace std;
 enum KEYS { UP, DOWN, LEFT, RIGHT };
 
-////////////////Structs///////////////
+////////////////Structs////////////////////////////
 typedef struct Tile
 {
 	int width = 50;
@@ -136,6 +136,7 @@ typedef struct Goblin
 
 	bool status_active = false;
 
+	list<Tile*> path;
 } Goblin;
 typedef struct Rider
 {
@@ -209,9 +210,9 @@ typedef struct Lab
 	Panel panel;
 
 } Lab;
-////////////////////////////////////////
+////////////////////////////////////////////////////
 
-////////////////Load///////////////////
+////////////////Load///////////////////////////////
 Map Load_Map(string map_path)
 {
 	Map map;
@@ -308,15 +309,15 @@ Cityhall Load_Cityhall(Map map)
 
 	cityhall.status_active = 0;
 
-	map.tiles[map.ch_y][map.ch_x].type = 22;
-	map.tiles[map.ch_y + 1][map.ch_x].type = 22;
-	map.tiles[map.ch_y + 2][map.ch_x].type = 22;
-	map.tiles[map.ch_y][map.ch_x + 1].type = 22;
-	map.tiles[map.ch_y + 1][map.ch_x + 1].type = 22;
-	map.tiles[map.ch_y + 2][map.ch_x + 1].type = 22;
-	map.tiles[map.ch_y][map.ch_x + 2].type = 22;
-	map.tiles[map.ch_y + 1][map.ch_x + 2].type = 22;
-	map.tiles[map.ch_y + 2][map.ch_x + 2].type = 22;
+	map.tiles[map.ch_y][map.ch_x].type = 99;
+	map.tiles[map.ch_y + 1][map.ch_x].type = 99;
+	map.tiles[map.ch_y + 2][map.ch_x].type = 99;
+	map.tiles[map.ch_y][map.ch_x + 1].type = 99;
+	map.tiles[map.ch_y + 1][map.ch_x + 1].type = 99;
+	map.tiles[map.ch_y + 2][map.ch_x + 1].type = 99;
+	map.tiles[map.ch_y][map.ch_x + 2].type = 99;
+	map.tiles[map.ch_y + 1][map.ch_x + 2].type = 99;
+	map.tiles[map.ch_y + 2][map.ch_x + 2].type = 99;
 
 	cityhall.panel.bitmap00 = al_load_bitmap("Bitmaps/Interface/Icons/Icon_2.bmp");
 	cityhall.panel.bitmap01 = al_load_bitmap("Bitmaps/Interface/Icons/Icon_3.bmp");
@@ -363,9 +364,9 @@ void Load_Tile_Bitmaps(ALLEGRO_BITMAP *tile_bitmaps[10]) {
 	tile_bitmaps[2] = al_load_bitmap("Bitmaps/Tiles/Road.bmp");
 
 }
-////////////////////////////////////////
+////////////////////////////////////////////////////
 
-/////////////////Draw//////////////////
+/////////////////Draw///////////////////////////////
 void Draw_Interface(Interface interface)
 {
 	al_draw_bitmap(interface.bitmap, 0, 0, 0);
@@ -518,7 +519,26 @@ void Draw_Panel(Panel *panel, Interface interface) {
 		al_draw_bitmap(panel->bitmap22, panel->x22, panel->y22, 0);
 	}
 }
-/////////////////////////////////////////////
+void Draw_Path(list<Tile*> path, Map map, int map_x, int map_y) {
+	Tile *a;
+	Tile *b;
+	int ax;
+	int bx;
+	int ay;
+	int by;
+	for (list<Tile*>::iterator iter = path.begin(), prev = path.end(); iter != path.end(); prev = iter, iter++) {
+		if(prev != path.end()){
+			a = *prev;
+			b = *iter;
+			ax = (a->x)*(a->width) + (a->width / 2) + map_x;
+			ay = (a->y)*(a->height) + (a->height / 2) + map_y;
+			bx = (b->x)*(b->width) + (b->width / 2) + map_x;
+			by = (b->y)*(b->height) + (b->height / 2) + map_y;
+			al_draw_line(ax, ay, bx, by, al_map_rgb(0, 0, 0), 5);
+		}
+	}
+}
+////////////////////////////////////////////////////
 
 //////////////////CursorPosition////////////////////
 bool Cursor_On_MainMap(Cursor cursor, Interface interface) 
@@ -588,102 +608,109 @@ void Set_Rider_InActive(Rider *rider, Rider *active_rider)
 }
 ///////////////////////////////////////////////////////////
 
-//////////////////Astar Pathfinding///////////////////////
+//////////////////A_star Pathfinding///////////////////////
 typedef struct node {
-	Tile tile;
+	Tile *tile;
 	node *parent = NULL;
 	int h = 0;
 	int g = 0;
 	int f = 0;
+	bool o = false;
 	bool c = false;
 	node *adjacent[4] = { NULL, NULL, NULL, NULL };
 }node;
-void add_addjacent(node par, node **nodes, Map map)
-{
-	if ((par.tile.x - 1 >= 0 && par.tile.x - 1 <= map.width) && (par.tile.y >= 0 && par.tile.y <= map.height)) {
-		par.adjacent[0] = &nodes[par.tile.y][par.tile.x - 1];
-	}
-	if ((par.tile.x + 1 >= 0 && par.tile.x + 1 <= map.width) && (par.tile.y >= 0 && par.tile.y <= map.height)) {
-		par.adjacent[1] = &nodes[par.tile.y][par.tile.x + 1];
-	}
-	if ((par.tile.x >= 0 && par.tile.x <= map.width) && (par.tile.y - 1 >= 0 && par.tile.y - 1 <= map.height)) {
-		par.adjacent[2] = &nodes[par.tile.y - 1][par.tile.x];
-	}
-	if ((par.tile.x >= 0 && par.tile.x <= map.width) && (par.tile.y + 1 >= 0 && par.tile.y + 1 <= map.height)) {
-		par.adjacent[3] = &nodes[par.tile.y - 1][par.tile.x];
-	}
-}
-bool compare_nodes(node first, node second ) {
-	return (first.f <= second.f);
-}
-bool Node_in_List(node n, list<node> l)
-{
-	for (list<node>::iterator iter = l.begin(); iter != l.end(); iter++) {
-		if (iter->tile.x == n.tile.x && iter->tile.y == n.tile.y) return true;
+bool node_in_list(node *n, list<node*> l){
+	for (list<node*>::iterator iter = l.begin(); iter != l.end(); iter++) {
+		if (*iter == n && *iter == n) return true;
 	}
 	return false;
 }
-node lowest_node(list<node> lista) {
-	lista.sort(compare_nodes);
-	node n = lista.front();
-	lista.pop_front;
+node* lowest_node(list<node*> lista) {
+
+	lista.sort([](node *first, node *second) {return first->f < second->f; });
+	node *n = lista.front();
+
 	return n;
 }
-void a_star_path(int t_start_x, int t_start_y, int t_end_x, int t_end_y, Map map)
+list<Tile*> a_star_path(int t_start_x, int t_start_y, int t_end_x, int t_end_y, Map map)
 {
+	list<Tile*> path;
 	int h, w, main_h;
-	int hx = 2;
-	list<node> open;
-	list<node> closed;
+	int hx = 1;
+	list<node*> open;
 	node **nodes;
 	nodes = new node*[map.height];
 	for (h = 0; h < map.height; h++) {
 		nodes[h] = new node[map.width];
 		for (w = 0; w < map.width; w++) {
-			if (map.tiles[h][w].type == 11) {
+			nodes[h][w].tile = &(map.tiles[h][w]);
+			if (map.tiles[h][w].type % 10 == 1) {
 				nodes[h][w].h = fabs(map.tiles[t_end_y][t_end_x].x*hx - map.tiles[h][w].x*hx) + fabs(map.tiles[t_end_y][t_end_x].y*hx - map.tiles[h][w].y*hx);
 			}
+			else {
+				nodes[h][w].h = 10000;
+			}
 		}
 	}
-	node start = nodes[t_start_y][t_start_x];
-	
-	open.push_back(start);
-	node Q;
-	node N;
-	int new_g;
-
+	for (h = 0; h < map.height; h++) {
+		for (w = 0; w < map.width; w++) {
+			if (h > 0) nodes[h][w].adjacent[0] = &nodes[h - 1][w];
+			if(h < map.height - 1) nodes[h][w].adjacent[1] = &nodes[h + 1][w];
+			if(w > 0) nodes[h][w].adjacent[2] = &nodes[h][w - 1];
+			if(w < map.width - 1) nodes[h][w].adjacent[3] = &nodes[h][w + 1];
+		}
+	}
+	open.push_front(&nodes[t_start_y][t_start_x]);
+	node *Q;
+	int new_G;
 	while (!open.empty()) {
-		Q = lowest_node(open);
-		add_addjacent(start, nodes, map);
-		Q.c = true;
-		if (Q.tile.x == t_end_x && Q.tile.y == t_end_y) break;
-
+		open.sort([](node *first, node *second) {return first->f < second->f; });
+		Q = open.front();
+		Q->c = true;
+		open.pop_front();
+//		printf("Q: %i %i %i \n", Q->tile->x, Q->tile->y, Q->tile->type % 10);
+		if (Q->tile->x == t_end_x && Q->tile->y == t_end_y) {
+			break;
+		}
 		for (int i = 0; i < 4; i++) {
-			N = *Q.adjacent[i];
-			if (N.c == true || (N.tile.type % 10) == 1) continue;
-			else if (!Node_in_List(N, open)) {
-				open.push_back(N);
-				N.parent = &Q;
-				N.g = Q.g + 10;
-				N.f = N.h + N.g;
-			}
-			else {
-				new_g = Q.g + 10;
-				if (new_g < N.g) {
-					N.parent = &Q;
-					N.g = new_g;
-					N.f = N.h + N.g;
+//			printf("Q: %i %i %i  \n", Q->adjacent[i]->tile->x, Q->adjacent[i]->tile->y, (Q->adjacent[i]->c == 0 && Q->adjacent[i]->tile->type == 21));
+			if (Q->adjacent[i] != NULL) {
+				if (Q->adjacent[i]->c == 1 || Q->adjacent[i]->tile->type % 10 != 1) {
+//					printf("1 \n");
+					continue;
+				}
+				else if (node_in_list(Q->adjacent[i], open) == false) {
+					open.push_front(Q->adjacent[i]);
+					Q->adjacent[i]->parent = Q;
+					Q->adjacent[i]->g = Q->adjacent[i]->g + 10;
+					Q->adjacent[i]->f = Q->adjacent[i]->g + Q->adjacent[i]->h;
+//					printf("2 \n");
+				}
+				else {
+					new_G = Q->adjacent[i]->g + 10;
+					if (new_G < Q->adjacent[i]->g) {
+						Q->adjacent[i]->parent = Q;
+						Q->adjacent[i]->g = new_G;
+						Q->adjacent[i]->f = Q->adjacent[i]->g + Q->adjacent[i]->h;
+					}
+//					printf("3 \n");
 				}
 			}
+			else {
+				continue;
+			}
 		}
-		open.pop_front();
 	}
-
-
-
-
+	Q = &nodes[t_end_y][t_end_x];
+	while(true) {
+		printf("Q: %i %i %i \n", Q->tile->x, Q->tile->y, Q->tile->type % 10);
+		path.push_front(Q->tile);
+		if (Q->parent == NULL) break;
+		Q = Q->parent;
+	}
+	return path;
 }
-////////////////////////////////////////
+///////////////////////////////////////////////////////////
 
 int main(void)
 {
@@ -747,22 +774,28 @@ int main(void)
 	Cityhall cityhall = Load_Cityhall(map);
 
 	list<Goblin> goblins;
-	Goblin goblin = Load_Goblin(map, cityhall.entrance_x, cityhall.entrance_y);
-	goblins.push_front(goblin);
-
 	list<Bunker> bunkers;
 	list<Rider> riders;
+
+	// Pirszy Gobo
+	Goblin goblin = Load_Goblin(map, cityhall.entrance_x, cityhall.entrance_y);
+	goblins.push_front(goblin);
 
 	Goblin * active_goblin = NULL;
 	Bunker * active_bunker = NULL;
 	Rider * active_rider = NULL;
 	Cityhall * active_cityhall = NULL;
-
 	Panel * active_panel = NULL;
 
-
-	//A_Star_Path(0,0, map.ch_x,map.ch_y, map);
-
+	list<Tile*> path = a_star_path(0, 2, 17, 19, map);
+	/*
+	for (int h = 0; h < map.height; h++) {
+		for (int w = 0; w < map.width; w++) {
+			printf("%i %i   ", map.tiles[h][w].x, map.tiles[h][w].y );
+		}
+		printf("\n");
+	}
+	*/
 
 	while (!done) {
 		ALLEGRO_EVENT ev;
@@ -952,6 +985,8 @@ int main(void)
 				}
 			}
 			
+			Draw_Path(path, map, map_x, map_y);
+
 			Draw_Interface(interface);
 			Draw_Minimap(map, interface, mini_map_x, mini_map_y);
 			if (active_cityhall != NULL || active_goblin != NULL || active_bunker != NULL || active_rider != NULL) {
@@ -965,6 +1000,7 @@ int main(void)
 										interface.actions.x + interface.actions.width, interface.actions.y + interface.actions.height,
 										al_map_rgb(0, 0, 0));
 			}
+
 			Draw_Cursor(cursor);
 			al_flip_display();
 			al_clear_to_color(al_map_rgb(0, 0, 0));
