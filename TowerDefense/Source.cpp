@@ -62,6 +62,9 @@ typedef struct Cursor
 	int x;
 	int y;
 
+	int t_x;
+	int t_y;
+
 	bool buttons[2] = { false, false };
 
 	ALLEGRO_BITMAP *bitmapIdle;
@@ -69,8 +72,6 @@ typedef struct Cursor
 
 } Cursor;	
 typedef struct Panel {
-
-	int x = 1111;
 
 	// function 00
 	ALLEGRO_BITMAP *bitmap00 = NULL;
@@ -126,11 +127,13 @@ typedef struct Goblin
 	int tile_pos_x;
 	int tile_pos_y;
 
-	int pos_x;
-	int pos_y;
+	float pos_x;
+	float pos_y;
 
 	int width = 1;
 	int height = 1;
+
+	float speed = 2;
 
 	Panel panel;
 
@@ -336,14 +339,13 @@ Goblin Load_Goblin(Map map, int tile_x, int tile_y) {
 	goblin.tile_pos_x = tile_x;
 	goblin.tile_pos_y = tile_y;
 
-	goblin.pos_x = map.tiles[goblin.tile_pos_y][goblin.tile_pos_x].x*map.tiles[0][0].width;
-	goblin.pos_y = map.tiles[goblin.tile_pos_y][goblin.tile_pos_x].y*map.tiles[0][0].height;
+	goblin.pos_x = (tile_x) * (map.tiles[0][0].width);
+	goblin.pos_y = (tile_y) * (map.tiles[0][0].height);
 
-	goblin.width = goblin.width*map.tiles[0][0].width;
-	goblin.height = goblin.height*map.tiles[0][0].height;
+	goblin.width = goblin.width *  map.tiles[0][0].width;
+	goblin.height = goblin.height * map.tiles[0][0].height;
 
 	goblin.panel.bitmap00 = al_load_bitmap("Bitmaps/Interface/Icons/EmptyIcon.bmp");
-	goblin.panel.x = 2222;
 
 	return goblin;
 }
@@ -534,7 +536,7 @@ void Draw_Path(list<Tile*> path, Map map, int map_x, int map_y) {
 			ay = (a->y)*(a->height) + (a->height / 2) + map_y;
 			bx = (b->x)*(b->width) + (b->width / 2) + map_x;
 			by = (b->y)*(b->height) + (b->height / 2) + map_y;
-			al_draw_line(ax, ay, bx, by, al_map_rgb(0, 0, 0), 5);
+			al_draw_line(ax, ay, bx, by, al_map_rgb(0, 0, 0), 3);
 		}
 	}
 }
@@ -667,16 +669,13 @@ list<Tile*> a_star_path(int t_start_x, int t_start_y, int t_end_x, int t_end_y, 
 		open.sort([](node *first, node *second) {return first->f < second->f; });
 		Q = open.front();
 		Q->c = true;
-		open.pop_front();
-//		printf("Q: %i %i %i \n", Q->tile->x, Q->tile->y, Q->tile->type % 10);
 		if (Q->tile->x == t_end_x && Q->tile->y == t_end_y) {
 			break;
 		}
+		open.pop_front();
 		for (int i = 0; i < 4; i++) {
-//			printf("Q: %i %i %i  \n", Q->adjacent[i]->tile->x, Q->adjacent[i]->tile->y, (Q->adjacent[i]->c == 0 && Q->adjacent[i]->tile->type == 21));
 			if (Q->adjacent[i] != NULL) {
 				if (Q->adjacent[i]->c == 1 || Q->adjacent[i]->tile->type % 10 != 1) {
-//					printf("1 \n");
 					continue;
 				}
 				else if (node_in_list(Q->adjacent[i], open) == false) {
@@ -684,7 +683,6 @@ list<Tile*> a_star_path(int t_start_x, int t_start_y, int t_end_x, int t_end_y, 
 					Q->adjacent[i]->parent = Q;
 					Q->adjacent[i]->g = Q->adjacent[i]->g + 10;
 					Q->adjacent[i]->f = Q->adjacent[i]->g + Q->adjacent[i]->h;
-//					printf("2 \n");
 				}
 				else {
 					new_G = Q->adjacent[i]->g + 10;
@@ -693,7 +691,6 @@ list<Tile*> a_star_path(int t_start_x, int t_start_y, int t_end_x, int t_end_y, 
 						Q->adjacent[i]->g = new_G;
 						Q->adjacent[i]->f = Q->adjacent[i]->g + Q->adjacent[i]->h;
 					}
-//					printf("3 \n");
 				}
 			}
 			else {
@@ -703,9 +700,9 @@ list<Tile*> a_star_path(int t_start_x, int t_start_y, int t_end_x, int t_end_y, 
 	}
 	Q = &nodes[t_end_y][t_end_x];
 	while(true) {
-		printf("Q: %i %i %i \n", Q->tile->x, Q->tile->y, Q->tile->type % 10);
+		if (Q->parent == NULL)
+			break;
 		path.push_front(Q->tile);
-		if (Q->parent == NULL) break;
 		Q = Q->parent;
 	}
 	return path;
@@ -774,10 +771,16 @@ int main(void)
 	Cityhall cityhall = Load_Cityhall(map);
 
 	list<Goblin> goblins;
+	int goblin_s = 0;
 	list<Bunker> bunkers;
+	int bunker_s = 0;
 	list<Rider> riders;
+	int rider_s = 0;
+	float dist;
 
 	// Pirszy Gobo
+	Goblin goblin2 = Load_Goblin(map, 8, 16);
+	goblins.push_front(goblin2);
 	Goblin goblin = Load_Goblin(map, cityhall.entrance_x, cityhall.entrance_y);
 	goblins.push_front(goblin);
 
@@ -787,15 +790,7 @@ int main(void)
 	Cityhall * active_cityhall = NULL;
 	Panel * active_panel = NULL;
 
-	list<Tile*> path = a_star_path(0, 2, 17, 19, map);
-	/*
-	for (int h = 0; h < map.height; h++) {
-		for (int w = 0; w < map.width; w++) {
-			printf("%i %i   ", map.tiles[h][w].x, map.tiles[h][w].y );
-		}
-		printf("\n");
-	}
-	*/
+	Tile* t;
 
 	while (!done) {
 		ALLEGRO_EVENT ev;
@@ -850,6 +845,12 @@ int main(void)
 		{
 			cursor.x = ev.mouse.x;
 			cursor.y = ev.mouse.y;
+
+			if (Cursor_On_MainMap(cursor, interface) == true) {
+				cursor.t_x = fabs((map_x - cursor.x) / (map.tiles[0][0].width));
+				cursor.t_y = fabs((map_y - cursor.y) / (map.tiles[0][0].height));
+			}
+
 			redraw = true;
 		}
 		else if (ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
@@ -863,34 +864,48 @@ int main(void)
 							Set_Goblin_Active(&*iter, active_goblin);
 							active_goblin = &(*iter);
 							active_panel = &active_goblin->panel;
+							goblin_s = 1;
 						}
 						else {
 							Set_Goblin_InActive(&*iter, active_goblin);
-							active_goblin = NULL;
+							if (goblin_s != 1) {
+								active_goblin = NULL;
+							}
+
 						}
 					}
+					goblin_s = 0;
 					for (list<Bunker>::iterator iter = bunkers.begin(); iter != bunkers.end(); iter++) {
 						if (Cursor_on_Item(cursor, iter->pos_x + map_x, iter->pos_y + map_y, iter->width, iter->height) == true) {
 							Set_Bunker_Active(&*iter, active_bunker);
 							active_bunker = &(*iter);
 							active_panel = &*(&iter->panel);
+							bunker_s = 1;
 						}
 						else {
 							Set_Bunker_InActive(&*iter, active_bunker);
-							active_bunker = NULL;
+							if (bunker_s != 1) {
+								active_bunker = NULL;
+							}
+
 						}
 					}
+					bunker_s = 0;
 					for (list<Rider>::iterator iter = riders.begin(); iter != riders.end(); iter++) {
 						if (Cursor_on_Item(cursor, iter->pos_x + map_x, iter->pos_y + map_y, iter->width, iter->height) == true) {
 							Set_Rider_Active(&*iter, active_rider);
 							active_rider = &(*iter);
 							active_panel = &(iter->panel);
+							rider_s = 1;
 						}
 						else {
 							Set_Rider_InActive(&*iter, active_rider);
-							active_rider = NULL;
+							if (rider_s != 1) {
+								active_rider = NULL;
+							}
 						}
 					}
+					rider_s = 0;
 					if (Cursor_on_Item(cursor, cityhall.pos_x + map_x, cityhall.pos_y + map_y, cityhall.width, cityhall.height) == true) {
 						Set_Cityhall_Active(&cityhall, active_cityhall);
 						active_cityhall = &cityhall;
@@ -908,6 +923,9 @@ int main(void)
 				break;
 			case 2:
 				cursor.buttons[1] = true;
+				if (active_goblin != NULL) {
+					active_goblin->path = a_star_path(active_goblin->tile_pos_x, active_goblin->tile_pos_y, cursor.t_x, cursor.t_y, map);
+				}
 				break;
 			}
 		}
@@ -945,6 +963,36 @@ int main(void)
 			redraw = true;
 		}
 
+		//State Calculation
+		for (list<Goblin>::iterator iter = goblins.begin(); iter != goblins.end(); iter++) {
+			if (!(iter->path).empty()) {
+				t = *(iter->path.begin());
+				dist = sqrt( ((t->x)*(t->width) - iter->pos_x)*((t->x)*(t->width) - iter->pos_x) + ((t->y)*(t->width) - iter->pos_y)*((t->y)*(t->height) - iter->pos_y) );
+
+				if (dist <= iter->speed) {
+					iter->pos_x = (t->x)*(t->width);
+					iter->pos_y = (t->y)*(t->height);
+					iter->tile_pos_x = t->x;
+					iter->tile_pos_y = t->y;
+					iter->path.pop_front();
+					continue;
+				}
+
+				if ( (t->x)*(t->width) < iter->pos_x ) {
+					iter->pos_x = iter->pos_x - iter->speed;
+				}
+				else if ( (t->x)*(t->width) > iter->pos_x ) {
+					iter->pos_x = iter->pos_x + iter->speed;
+				}
+				else if ( (t->y)*(t->width) < iter->pos_y ) {
+					iter->pos_y = iter->pos_y - iter->speed;
+				}
+				else if ((t->y)*(t->width) > iter->pos_y ) {
+					iter->pos_y = iter->pos_y + iter->speed;
+				}
+			}
+		}
+		 
 		//Drawing 
 		if (redraw && al_is_event_queue_empty(event_queue)) {
 			redraw = false;
@@ -959,6 +1007,7 @@ int main(void)
 
 			for (list<Goblin>::iterator iter = goblins.begin(); iter != goblins.end(); iter++) {
 				if (iter->status_active == 1) {
+					Draw_Path(*(&iter->path), map, map_x, map_y);
 					Draw_Active_Goblin(*iter, map, map_x, map_y);
 				}
 				else {
@@ -984,8 +1033,6 @@ int main(void)
 					Draw_Rider(*iter, map, map_x, map_y);
 				}
 			}
-			
-			Draw_Path(path, map, map_x, map_y);
 
 			Draw_Interface(interface);
 			Draw_Minimap(map, interface, mini_map_x, mini_map_y);
