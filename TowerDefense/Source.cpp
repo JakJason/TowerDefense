@@ -1,10 +1,13 @@
 #include <allegro5\allegro.h>
 #include <allegro5\allegro_image.h>
 #include <allegro5\allegro_primitives.h>
+#include <allegro5\allegro_font.h>
+#include <allegro5\allegro_ttf.h>
 #include <string>
 #include <fstream>
 #include <cstdio>
 #include <list>
+#include <functional>
 
 using namespace std;
 enum KEYS { UP, DOWN, LEFT, RIGHT };
@@ -28,6 +31,9 @@ typedef struct Map
 
 	int ch_x;
 	int ch_y;
+
+	int s_x;
+	int s_y;
 
 } Map;
 typedef struct Window 
@@ -72,6 +78,11 @@ typedef struct Cursor
 
 } Cursor;	
 typedef struct Panel {
+
+	int health_current = NULL;
+	int health_max = NULL;
+	ALLEGRO_BITMAP *icon = NULL;
+	string name = " ";
 
 	// function 00
 	ALLEGRO_BITMAP *bitmap00 = NULL;
@@ -133,7 +144,7 @@ typedef struct Goblin
 	int width = 1;
 	int height = 1;
 
-	float speed = 2;
+	float speed = 1.25;
 
 	Panel panel;
 
@@ -146,14 +157,16 @@ typedef struct Rider
 	ALLEGRO_BITMAP *bitmap;
 	ALLEGRO_BITMAP *bitmap_active;
 
-	int pos_x;
-	int pos_y;
+	float pos_x;
+	float pos_y;
 
-	int width;
-	int height;
+	int width = 1;
+	int height = 1;
 
 	int health_current;
 	int health_max;
+
+	float speed = 1;
 
 	Panel panel;
 
@@ -213,6 +226,12 @@ typedef struct Lab
 	Panel panel;
 
 } Lab;
+typedef struct Clock {
+	int t;
+	int s;
+	int m;
+	int h;
+}Clock;
 ////////////////////////////////////////////////////
 
 ////////////////Load///////////////////////////////
@@ -242,6 +261,10 @@ Map Load_Map(string map_path)
 			if (map.tiles[h][w].type == 99) {
 				map.ch_x = w;
 				map.ch_y = h;
+			}
+			else if (map.tiles[h][w].type == 91) {
+				map.s_x = w;
+				map.s_y = h;
 			}
 		}
 	}
@@ -325,6 +348,14 @@ Cityhall Load_Cityhall(Map map)
 	cityhall.panel.bitmap00 = al_load_bitmap("Bitmaps/Interface/Icons/Icon_2.bmp");
 	cityhall.panel.bitmap01 = al_load_bitmap("Bitmaps/Interface/Icons/Icon_3.bmp");
 	cityhall.panel.bitmap02 = al_load_bitmap("Bitmaps/Interface/Icons/Icon_4.bmp");
+
+	cityhall.panel.health_max = 1000;
+	cityhall.panel.health_current = cityhall.panel.health_max;
+	cityhall.panel.name = "City Hall";
+
+	cityhall.panel.icon = al_load_bitmap("Bitmaps\\GameObjects\\CityHall\\Cityhall_Icon.bmp");
+	al_convert_mask_to_alpha(cityhall.panel.icon, al_map_rgb(255, 0, 255));
+
 	return cityhall;
 }
 Goblin Load_Goblin(Map map, int tile_x, int tile_y) {
@@ -346,6 +377,9 @@ Goblin Load_Goblin(Map map, int tile_x, int tile_y) {
 	goblin.height = goblin.height * map.tiles[0][0].height;
 
 	goblin.panel.bitmap00 = al_load_bitmap("Bitmaps/Interface/Icons/EmptyIcon.bmp");
+	goblin.panel.name = "Goblin";
+	goblin.panel.icon = al_load_bitmap("Bitmaps\\GameObjects\\Goblin\\Goblin_Icon.bmp");
+	al_convert_mask_to_alpha(goblin.panel.icon, al_map_rgb(255, 0, 255));
 
 	return goblin;
 }
@@ -365,6 +399,16 @@ void Load_Tile_Bitmaps(ALLEGRO_BITMAP *tile_bitmaps[10]) {
 	tile_bitmaps[1] = al_load_bitmap("Bitmaps/Tiles/Grass.bmp");
 	tile_bitmaps[2] = al_load_bitmap("Bitmaps/Tiles/Road.bmp");
 
+}
+Clock Load_Clock() {
+	Clock clock;
+
+	clock.t = 0;
+	clock.s = 0;
+	clock.m = 0;
+	clock.h = 0;
+
+	return clock;
 }
 ////////////////////////////////////////////////////
 
@@ -434,6 +478,9 @@ void Draw_Map(Map map, ALLEGRO_BITMAP *tile_bitmaps[10], int map_x, int map_y) {
 			case 22:
 				al_draw_bitmap(tile_bitmaps[2], map_x + iw*map.tiles[ih][iw].width, map_y + ih*map.tiles[ih][iw].height, 0);
 				break;
+			case 91:
+				al_draw_bitmap(tile_bitmaps[2], map_x + iw*map.tiles[ih][iw].width, map_y + ih*map.tiles[ih][iw].height, 0);
+				break;
 
 			case 99:
 				al_draw_bitmap(tile_bitmaps[2], map_x + iw*map.tiles[ih][iw].width, map_y + ih*map.tiles[ih][iw].height, 0);
@@ -484,7 +531,7 @@ void Draw_Active_Rider(Rider rider, Map map, int map_x, int map_y) {
 	al_draw_bitmap(rider.bitmap_active, rider.pos_x + map_x, rider.pos_y + map_y, 0);
 	al_draw_bitmap(rider.bitmap, rider.pos_x + map_x, rider.pos_y + map_y, 0);
 }
-void Draw_Panel(Panel *panel, Interface interface) {
+void Draw_Panel(Panel *panel, Interface interface, ALLEGRO_FONT *font) {
 
 	al_draw_filled_rectangle(interface.status.x, interface.status.y,
 		interface.status.x + interface.status.width, interface.status.y + interface.status.height,
@@ -492,6 +539,16 @@ void Draw_Panel(Panel *panel, Interface interface) {
 	al_draw_filled_rectangle(interface.actions.x, interface.actions.y,
 		interface.actions.x + interface.actions.width, interface.actions.y + interface.actions.height,
 		al_map_rgb(0, 0, 0));
+
+	if (panel->icon != NULL) {
+		al_draw_bitmap(panel->icon, interface.status.x + 15, interface.status.y + 15, 0);
+	}
+
+	al_draw_textf(font, al_map_rgb(255, 255, 255), interface.status.x + 120, interface.status.y + 15, 0, "%s ", (panel->name).c_str());
+	if (panel->health_max != NULL) {
+		al_draw_textf(font, al_map_rgb(255, 255, 255), interface.status.x + 120, interface.status.y + 40, 0, "%i / %i ", panel->health_current, panel->health_max);
+	}
+
 
 	if (panel->bitmap00 != NULL) {
 		al_draw_bitmap(panel->bitmap00, panel->x00, panel->y00, 0);
@@ -539,6 +596,9 @@ void Draw_Path(list<Tile*> path, Map map, int map_x, int map_y) {
 			al_draw_line(ax, ay, bx, by, al_map_rgb(0, 0, 0), 3);
 		}
 	}
+}
+void Draw_Timer(Clock clock, ALLEGRO_FONT *font) {
+	al_draw_textf(font, al_map_rgb(255, 255, 255), 10, 10, 0, "%i : %i : %i ", clock.h, clock.m, clock.s);
 }
 ////////////////////////////////////////////////////
 
@@ -608,6 +668,24 @@ void Set_Rider_InActive(Rider *rider, Rider *active_rider)
 {
 	rider->status_active = 0;
 }
+void Update_Clock(Clock *clock) {
+	clock->t = clock->t + 1;
+
+	if (clock->t == 60) {
+		clock->s = clock->s + 1;
+		clock->t = 0;
+	}
+
+	if (clock->s == 60) {
+		clock->m = clock->m + 1;
+		clock->s = 0;
+	}
+
+	if (clock->m == 60) {
+		clock->h = clock->h + 1;
+		clock->m = 0;
+	}
+}
 ///////////////////////////////////////////////////////////
 
 //////////////////A_star Pathfinding///////////////////////
@@ -621,6 +699,16 @@ typedef struct node {
 	bool c = false;
 	node *adjacent[4] = { NULL, NULL, NULL, NULL };
 }node;
+typedef bool(*checkpath)(node* node);
+bool Check_f_goblin(node *node) {
+	if (node->tile->type % 10 != 1) return true;
+	return false;
+};
+bool Check_f_rider(node *node) {
+	if (node->tile->type == 21) return true;
+	else if (node->tile->type == 91) return true;
+	return false;
+}
 bool node_in_list(node *n, list<node*> l){
 	for (list<node*>::iterator iter = l.begin(); iter != l.end(); iter++) {
 		if (*iter == n && *iter == n) return true;
@@ -634,7 +722,7 @@ node* lowest_node(list<node*> lista) {
 
 	return n;
 }
-list<Tile*> a_star_path(int t_start_x, int t_start_y, int t_end_x, int t_end_y, Map map)
+list<Tile*> a_star_path(int t_start_x, int t_start_y, int t_end_x, int t_end_y, Map map, std::function<bool(node*)> checkpath)
 {
 	list<Tile*> path;
 	int h, w, main_h;
@@ -675,7 +763,7 @@ list<Tile*> a_star_path(int t_start_x, int t_start_y, int t_end_x, int t_end_y, 
 		open.pop_front();
 		for (int i = 0; i < 4; i++) {
 			if (Q->adjacent[i] != NULL) {
-				if (Q->adjacent[i]->c == 1 || Q->adjacent[i]->tile->type % 10 != 1) {
+				if (Q->adjacent[i]->c == 1 || checkpath(Q->adjacent[i])) {
 					continue;
 				}
 				else if (node_in_list(Q->adjacent[i], open) == false) {
@@ -722,12 +810,15 @@ int main(void)
 	ALLEGRO_DISPLAY *display = NULL;
 	ALLEGRO_TIMER *timer = NULL;
 
+
 	//allegro inits
 	al_init();
 	if (!al_init())
 		return -1;
 	al_init_image_addon();
 	al_init_primitives_addon();
+	al_init_font_addon();
+	al_init_ttf_addon();
 	al_install_keyboard();
 	al_install_mouse();
 
@@ -744,11 +835,14 @@ int main(void)
 		return -3;
 	al_convert_mask_to_alpha(interface.bitmap, al_map_rgb(255, 0, 255));
 
+	ALLEGRO_FONT *font24 = al_load_font("arial.ttf", 24, 0);
+	ALLEGRO_FONT *font16 = al_load_font("arial.ttf", 16, 0);
+
 	// Cursor
 	Cursor cursor = Load_Cursor(interface);
 	al_hide_mouse_cursor(display);
 
-	// Tile bitmaps
+	// Tile bitmaps 
 	ALLEGRO_BITMAP *tile_bitmaps[10];
 	Load_Tile_Bitmaps(tile_bitmaps);
 
@@ -769,28 +863,27 @@ int main(void)
 
 	// Game objects
 	Cityhall cityhall = Load_Cityhall(map);
-
 	list<Goblin> goblins;
-	int goblin_s = 0;
 	list<Bunker> bunkers;
-	int bunker_s = 0;
 	list<Rider> riders;
-	int rider_s = 0;
-	float dist;
+	Clock clock = Load_Clock();
+	Clock* cp = &clock;
 
 	// Pirszy Gobo
-	Goblin goblin2 = Load_Goblin(map, 8, 16);
-	goblins.push_front(goblin2);
 	Goblin goblin = Load_Goblin(map, cityhall.entrance_x, cityhall.entrance_y);
 	goblins.push_front(goblin);
 
+	//Control Variables
 	Goblin * active_goblin = NULL;
 	Bunker * active_bunker = NULL;
 	Rider * active_rider = NULL;
 	Cityhall * active_cityhall = NULL;
 	Panel * active_panel = NULL;
-
 	Tile* t;
+	int goblin_s = 0;
+	int bunker_s = 0;
+	int rider_s = 0;
+	float dist;
 
 	while (!done) {
 		ALLEGRO_EVENT ev;
@@ -924,7 +1017,7 @@ int main(void)
 			case 2:
 				cursor.buttons[1] = true;
 				if (active_goblin != NULL) {
-					active_goblin->path = a_star_path(active_goblin->tile_pos_x, active_goblin->tile_pos_y, cursor.t_x, cursor.t_y, map);
+					active_goblin->path = a_star_path(active_goblin->tile_pos_x, active_goblin->tile_pos_y, cursor.t_x, cursor.t_y, map, Check_f_goblin);
 				}
 				break;
 			}
@@ -959,38 +1052,38 @@ int main(void)
 				map_x -= keys[RIGHT] * 10;
 				mini_map_x += keys[RIGHT];
 			}
+			//State Calculation
+			for (list<Goblin>::iterator iter = goblins.begin(); iter != goblins.end(); iter++) {
+				if (!(iter->path).empty()) {
+					t = *(iter->path.begin());
+					dist = sqrt(((t->x)*(t->width) - iter->pos_x)*((t->x)*(t->width) - iter->pos_x) + ((t->y)*(t->width) - iter->pos_y)*((t->y)*(t->height) - iter->pos_y));
 
-			redraw = true;
-		}
+					if (dist <= iter->speed) {
+						iter->pos_x = (t->x)*(t->width);
+						iter->pos_y = (t->y)*(t->height);
+						iter->tile_pos_x = t->x;
+						iter->tile_pos_y = t->y;
+						iter->path.pop_front();
+						continue;
+					}
 
-		//State Calculation
-		for (list<Goblin>::iterator iter = goblins.begin(); iter != goblins.end(); iter++) {
-			if (!(iter->path).empty()) {
-				t = *(iter->path.begin());
-				dist = sqrt( ((t->x)*(t->width) - iter->pos_x)*((t->x)*(t->width) - iter->pos_x) + ((t->y)*(t->width) - iter->pos_y)*((t->y)*(t->height) - iter->pos_y) );
-
-				if (dist <= iter->speed) {
-					iter->pos_x = (t->x)*(t->width);
-					iter->pos_y = (t->y)*(t->height);
-					iter->tile_pos_x = t->x;
-					iter->tile_pos_y = t->y;
-					iter->path.pop_front();
-					continue;
-				}
-
-				if ( (t->x)*(t->width) < iter->pos_x ) {
-					iter->pos_x = iter->pos_x - iter->speed;
-				}
-				else if ( (t->x)*(t->width) > iter->pos_x ) {
-					iter->pos_x = iter->pos_x + iter->speed;
-				}
-				else if ( (t->y)*(t->width) < iter->pos_y ) {
-					iter->pos_y = iter->pos_y - iter->speed;
-				}
-				else if ((t->y)*(t->width) > iter->pos_y ) {
-					iter->pos_y = iter->pos_y + iter->speed;
+					if ((t->x)*(t->width) < iter->pos_x) {
+						iter->pos_x = iter->pos_x - iter->speed;
+					}
+					else if ((t->x)*(t->width) > iter->pos_x) {
+						iter->pos_x = iter->pos_x + iter->speed;
+					}
+					else if ((t->y)*(t->width) < iter->pos_y) {
+						iter->pos_y = iter->pos_y - iter->speed;
+					}
+					else if ((t->y)*(t->width) > iter->pos_y) {
+						iter->pos_y = iter->pos_y + iter->speed;
+					}
 				}
 			}
+
+			Update_Clock(cp);
+			redraw = true;
 		}
 		 
 		//Drawing 
@@ -1037,7 +1130,7 @@ int main(void)
 			Draw_Interface(interface);
 			Draw_Minimap(map, interface, mini_map_x, mini_map_y);
 			if (active_cityhall != NULL || active_goblin != NULL || active_bunker != NULL || active_rider != NULL) {
-				Draw_Panel(active_panel, interface);
+				Draw_Panel(active_panel, interface, font16);
 			}
 			else{
 				al_draw_filled_rectangle(interface.status.x, interface.status.y,
@@ -1047,6 +1140,8 @@ int main(void)
 										interface.actions.x + interface.actions.width, interface.actions.y + interface.actions.height,
 										al_map_rgb(0, 0, 0));
 			}
+
+			Draw_Timer(clock, font24);
 
 			Draw_Cursor(cursor);
 			al_flip_display();
