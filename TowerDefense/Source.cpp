@@ -81,7 +81,7 @@ typedef struct Panel {
 
 	int health_current = NULL;
 	int health_max = NULL;
-	ALLEGRO_BITMAP *icon = NULL;
+	
 	string name = " ";
 
 	// function 00
@@ -128,6 +128,8 @@ typedef struct Panel {
 	ALLEGRO_BITMAP *bitmap22 = NULL;
 	int x22 = x02;
 	int y22 = y20;
+
+	ALLEGRO_BITMAP *icon = NULL;
 
 } Panel;
 typedef struct Goblin
@@ -1125,53 +1127,65 @@ int main(void)
 				}
 			}
 
-			for (list<Rider>::iterator iter = riders.begin(); iter != riders.end(); iter++) {
-				if (iter->status_active == true && active_panel == nullptr) {
-					active_panel = &iter->panel;
-				}
-				if (iter->health_current == 0) {
-					iter = riders.erase(iter);
-				}
-				else if (!(iter->path).empty()) {
-					t = *(iter->path.begin());
-					dist = sqrt(((t->x)*(t->width) - iter->pos_x)*((t->x)*(t->width) - iter->pos_x) + ((t->y)*(t->width) - iter->pos_y)*((t->y)*(t->height) - iter->pos_y));
-
-					if (dist <= iter->speed) {
-						iter->pos_x = (t->x)*(t->width);
-						iter->pos_y = (t->y)*(t->height);
-						iter->tile_pos_x = t->x;
-						iter->tile_pos_y = t->y;
-						iter->path.pop_front();
-						continue;
+			if (riders.empty() != true){
+				for (list<Rider>::iterator iter = riders.begin(); iter != riders.end();) {
+					if (iter->status_active == true && active_panel == nullptr) {
+						active_panel = &iter->panel;
 					}
 
-					if ((t->x)*(t->width) < iter->pos_x) {
-						iter->pos_x = iter->pos_x - iter->speed;
+					if (iter->health_current == 0) {
+						if (active_rider == &*iter) {
+							Set_Rider_InActive(&*iter, active_rider);
+							active_rider = NULL;
+						}
+						Set_Panel_InActive(&(iter->panel));
+						iter = riders.erase(iter);
 					}
-					else if ((t->x)*(t->width) > iter->pos_x) {
-						iter->pos_x = iter->pos_x + iter->speed;
+
+					else if ((iter->path).empty()) {
+						if (active_rider == &*iter) {
+							Set_Rider_InActive(&*iter, active_rider);
+							active_rider = NULL;
+						}
+						Set_Panel_InActive(&(iter->panel));
+						iter = riders.erase(iter);
+						cityhall.panel.health_current = cityhall.panel.health_current - 10;
 					}
-					else if ((t->y)*(t->width) < iter->pos_y) {
-						iter->pos_y = iter->pos_y - iter->speed;
+
+					else if (!(iter->path).empty()) {
+						t = *(iter->path.begin());
+						dist = sqrt(((t->x)*(t->width) - iter->pos_x)*((t->x)*(t->width) - iter->pos_x) + ((t->y)*(t->width) - iter->pos_y)*((t->y)*(t->height) - iter->pos_y));
+						if (dist <= iter->speed) {
+							iter->pos_x = (t->x)*(t->width);
+							iter->pos_y = (t->y)*(t->height);
+							iter->tile_pos_x = t->x;
+							iter->tile_pos_y = t->y;
+							iter->path.pop_front();
+							continue;
+						}
+						if ((t->x)*(t->width) < iter->pos_x) {
+							iter->pos_x = iter->pos_x - iter->speed;
+						}
+						else if ((t->x)*(t->width) > iter->pos_x) {
+							iter->pos_x = iter->pos_x + iter->speed;
+						}
+						else if ((t->y)*(t->width) < iter->pos_y) {
+							iter->pos_y = iter->pos_y - iter->speed;
+						}
+						else if ((t->y)*(t->width) > iter->pos_y) {
+							iter->pos_y = iter->pos_y + iter->speed;
+						}
+						++iter;
 					}
-					else if ((t->y)*(t->width) > iter->pos_y) {
-						iter->pos_y = iter->pos_y + iter->speed;
-					}
-				}
-				else if ((iter->path).empty()) {
-					Set_Panel_InActive(&(iter->panel));
-					iter = riders.erase(iter);
-					cityhall.panel.health_current = cityhall.panel.health_current - 10;
+
 				}
 			}
 
-			if ((clock.t == 0) && (clock.s == 5) && (clock.m >= 0)) {
+			if ((clock.t == 0) && (clock.s == 0) && (clock.m > 1)) {
 				for (int i = 0; i < rider_count; i++) {
 					current_rider = Load_Rider(map, map.s_x, map.s_y, rider_health, rider_speed);
 					buffor_riders.push_back(current_rider);
 				}
-				
-				printf("%i ", buffor_riders.size());
 			}
 
 			if ((clock.t == 0) && (clock.s % 2 == 1) && !(buffor_riders.empty()) ) {
@@ -1179,8 +1193,6 @@ int main(void)
 				current_rider.path = a_star_path(map.s_x, map.s_y, 17, 19, map, Check_f_rider);
 				riders.push_back(current_rider);
 				buffor_riders.pop_front();
-
-				printf("%i \n", riders.size());
 			}
 
 			Update_Clock(cp);
