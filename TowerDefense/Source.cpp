@@ -363,7 +363,7 @@ Map Load_Map(string map_path)
 			}
 		}
 	}
-
+	f.close();
 	return map;
 }
 Interface Load_Interface(string interface_path)
@@ -452,7 +452,7 @@ Cityhall Load_Cityhall(Map map, int healcost, int goblincost)
 
 	cityhall.empty_panel = Load_Panel(NULL, NULL, NULL, NULL, NULL, NULL, bitmap07, NULL, NULL);
 	cityhall.empty_panel.health_max = 1000;
-	cityhall.empty_panel.health_current = cityhall.empty_panel.health_max;
+	cityhall.empty_panel.health_current = 0;//cityhall.empty_panel.health_max;
 	cityhall.empty_panel.name = "City Hall";
 	cityhall.empty_panel.button20.cost = healcost;
 	cityhall.empty_panel.icon = al_load_bitmap("Bitmaps\\GameObjects\\CityHall\\Cityhall_Icon.bmp");
@@ -690,6 +690,46 @@ XY LegalExit(BuildUp *buildup, Map map) {
 	}
 
 	return xy;
+}
+
+void Load_Highscores(int table[]) {
+	ifstream f;
+	f.open("Highscores\\Highscores.txt");
+	for (int i = 0; i < 10; i++)
+	{
+		f >> table[i];
+	}
+	f.close();
+}
+void Save_Highscores(int table[], int score) {
+	FILE *f;
+	errno_t err;
+	int temp;
+
+	err = fopen_s(&f, "Highscores\\Highscores.txt", "w+");
+	if (err != 0) {
+		printf("File was not opened\n");
+	}
+	else{
+		
+		for (int i = 0; i < 10; i++)
+		{
+			printf("%i  ", score);
+			if (score > table[i]) {
+				temp = table[i];
+
+				table[i] = score;
+
+				score = temp;
+			}
+		}
+		if (f) {
+			for (int i = 0; i < 10; i++) {
+				fprintf(f, "%i \n", table[i]);
+			}
+		}
+		fclose(f);
+	}
 }
 ////////////////////////////////////////////////////
 
@@ -1210,6 +1250,8 @@ int main(void)
 	ALLEGRO_FONT *font16 = al_load_font("arial.ttf", 16, 0);
 	ALLEGRO_FONT *font24 = al_load_font("arial.ttf", 24, 0);
 	ALLEGRO_FONT *font48 = al_load_font("arial.ttf", 48, 0);
+	ALLEGRO_FONT *font64 = al_load_font("arial.ttf", 64, 0);
+	ALLEGRO_FONT *font128 = al_load_font("arial.ttf", 128, 0);
 
 	// Cursor
 	Cursor cursor = Load_Cursor(interface);
@@ -1277,6 +1319,8 @@ int main(void)
 
 	Tile* t;
 
+	int highscores[10];
+
 	int goblin_s = 0;
 	int bunker_s = 0;
 	int rider_s = 0;
@@ -1284,11 +1328,18 @@ int main(void)
 	int bups_s = 0;
 	int healcost = 100;
 
-	int game_state = 3; ///////// 1 - menu, 2 - game, 3 - gamelose
+	int game_state = 1; ///////// 1 - menu, 2 - game, 3 - gamelose
+
+
+	ALLEGRO_BITMAP *Menu_bmp = al_load_bitmap("Bitmaps\\Interface\\Menu\\Active.bmp");
+	al_convert_mask_to_alpha(Menu_bmp, al_map_rgb(255, 0, 255));
+	Button New_game = Load_Button(Menu_bmp, 60, 240);
+	Button High_score = Load_Button(Menu_bmp, 60, 340);
+	Button Exit = Load_Button(Menu_bmp, 60, 440);
 
 	float dist;
 	int kill_count = 0;
-	int money = 6000;
+	int money = 1000;
 	int temp_x, temp_y;
 	int temp_t;
 
@@ -1318,10 +1369,54 @@ int main(void)
 
 				redraw = true;
 			}
+			else if (ev.type == ALLEGRO_EVENT_KEY_UP)
+			{
+				switch (ev.keyboard.keycode)
+				{
+				case ALLEGRO_KEY_ESCAPE:
+					done = true;
+					break;
+				}
+			}
+			else if (ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
+			{
+				done = true;
+			}
+			else if (ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
+				if (Cursor_on_Item(cursor, New_game.x, New_game.y, 360, 90)) {
+					game_state = 2;
+				}
+				else if (Cursor_on_Item(cursor, High_score.x, High_score.y, 360, 90)) {
+					Load_Highscores(highscores);
+					game_state = 4;
+				}
+				else if (Cursor_on_Item(cursor, Exit.x, Exit.y, 360, 90)) {
+					done = true;
+				}
+
+			}
 
 			//Drawing 
 			if (redraw && al_is_event_queue_empty(event_queue)) {
 				redraw = false;
+
+				al_draw_textf(font128, al_map_rgb(75, 255, 75), 69, 69, 0, "GOBLINS TD.");
+
+				
+				if (Cursor_on_Item(cursor, New_game.x, New_game.y, 360, 90)) {
+					Draw_Button(New_game, font16);
+				}
+				al_draw_textf(font64, al_map_rgb(255, 255, 255), 69, 250, 0, "New Game");
+
+				if (Cursor_on_Item(cursor, High_score.x, High_score.y, 360, 90)) {
+					Draw_Button(High_score, font16);
+				}
+				al_draw_textf(font64, al_map_rgb(255, 255, 255), 69, 350, 0, "Highscores");
+
+				if (Cursor_on_Item(cursor, Exit.x, Exit.y, 360, 90)) {
+					Draw_Button(Exit, font16);
+				}
+				al_draw_textf(font64, al_map_rgb(255, 255, 255), 69, 450, 0, "Exit");
 
 
 				Draw_Cursor(cursor);
@@ -1369,7 +1464,7 @@ int main(void)
 					keys[RIGHT] = false;
 					break;
 				case ALLEGRO_KEY_ESCAPE:
-					done = true;
+					game_state = 1;
 					break;
 				}
 			}
@@ -1700,8 +1795,8 @@ int main(void)
 							(&*iter)->cooldown = 90;
 						}
 
-						if (iter->panel.dmg < iter->dmg + 5 * dmg) {
-							iter->panel.dmg = iter->panel.dmg + dmg;
+						if (iter->panel.dmg < iter->dmg + 2 * dmg) {
+							iter->panel.dmg = iter->panel.dmg + 2 * dmg;
 						}
 
 						if (iter->panel.range < iter->range + 0.1 * range) {
@@ -1871,7 +1966,7 @@ int main(void)
 
 				Update_Clock(cp);
 
-				if (cityhall.panel.health_current <= 0) {
+				if (cityhall.panel.health_current <= 0 || cityhall.empty_panel.health_current <= 0) {
 					game_state = 3;
 				}
 
@@ -1982,11 +2077,34 @@ int main(void)
 				switch (ev.keyboard.keycode)
 				{
 				case ALLEGRO_KEY_ESCAPE:
+
+					Save_Highscores(highscores, kill_count + money / 10);
+
+					dmg_cost = 200;
+					range_cost = 200;
+					cd_cost = 200;
+					bunker_cost = 250;
+					lab_cost = 400;
+					goblin_cost = 50;
+					dmg = 0;
+					cooldown = 0;
+					range = 0;
+					goblin_s = 0;
+					bunker_s = 0;
+					rider_s = 0;
+					lab_s = 0;
+					bups_s = 0;
+					healcost = 100;
+					kill_count = 0;
+					money = 1000;
 					game_state = 1;
 					break;
 				}
 			}
-		
+			else if (ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
+			{
+				done = true;
+			}
 			//Drawing 
 			if (redraw && al_is_event_queue_empty(event_queue)) {
 				redraw = false;
@@ -2001,28 +2119,58 @@ int main(void)
 				Draw_Cursor(cursor);
 			}
 
-			dmg_cost = 200;
-			range_cost = 200;
-			cd_cost = 200;
-			bunker_cost = 250;
-			lab_cost = 400;
-			goblin_cost = 50;
-			dmg = 0;
-			cooldown = 0;
-			range = 0;
-			goblin_s = 0;
-			bunker_s = 0;
-			rider_s = 0;
-			lab_s = 0;
-			bups_s = 0;
-			healcost = 100;
-			kill_count = 0;
-			money = 1000;
-
 			al_flip_display();
 			al_clear_to_color(al_map_rgb(0, 0, 0));
 		}
-	}
+	
+		else if (game_state == 4) {
+
+			//Events
+			if (ev.type == ALLEGRO_EVENT_TIMER) {
+				redraw = true;
+			}
+			else if (ev.type == ALLEGRO_EVENT_KEY_UP)
+			{
+				switch (ev.keyboard.keycode)
+				{
+				case ALLEGRO_KEY_ESCAPE:
+					game_state = 1;
+					break;
+				}
+			}
+			else if (ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
+			{
+				done = true;
+			}
+			else if (ev.type == ALLEGRO_EVENT_MOUSE_AXES)
+			{
+				cursor.x = ev.mouse.x;
+				cursor.y = ev.mouse.y;
+
+				if (Cursor_On_MainMap(cursor, interface) == true) {
+					cursor.t_x = fabs((map_x - cursor.x) / (map.tiles[0][0].width));
+					cursor.t_y = fabs((map_y - cursor.y) / (map.tiles[0][0].height));
+				}
+
+				redraw = true;
+			}
+
+			//Drawing 
+			if (redraw && al_is_event_queue_empty(event_queue)) {
+				redraw = false;
+				al_draw_textf(font128, al_map_rgb(75, 255, 75), 350 ,69, 0, "HIGH SCORES");
+
+				for (int i = 0; i < 10; i++)
+				{
+					al_draw_textf(font48, al_map_rgb(75, 255, 75), 350, 200 + i * 50, 0, "%i : %i ",i+1 , highscores[i]);
+				}
+
+				Draw_Cursor(cursor);
+			}
+			al_flip_display();
+			al_clear_to_color(al_map_rgb(0, 0, 0));
+		}
+}
 	al_destroy_bitmap(interface.bitmap);
 	al_destroy_event_queue(event_queue);
 	al_destroy_display(display);
