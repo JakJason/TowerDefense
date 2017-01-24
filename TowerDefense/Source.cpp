@@ -452,7 +452,7 @@ Cityhall Load_Cityhall(Map map, int healcost, int goblincost)
 
 	cityhall.empty_panel = Load_Panel(NULL, NULL, NULL, NULL, NULL, NULL, bitmap07, NULL, NULL);
 	cityhall.empty_panel.health_max = 1000;
-	cityhall.empty_panel.health_current = 0;//cityhall.empty_panel.health_max;
+	cityhall.empty_panel.health_current = cityhall.empty_panel.health_max;
 	cityhall.empty_panel.name = "City Hall";
 	cityhall.empty_panel.button20.cost = healcost;
 	cityhall.empty_panel.icon = al_load_bitmap("Bitmaps\\GameObjects\\CityHall\\Cityhall_Icon.bmp");
