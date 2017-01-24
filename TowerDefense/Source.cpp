@@ -163,9 +163,6 @@ typedef struct Rider
 	int width = 1;
 	int height = 1;
 
-	int health_current;
-	int health_max;
-
 	float speed = 1;
 
 	Panel panel;
@@ -187,6 +184,8 @@ typedef struct Bunker
 	int height = 2;
 
 	float range = 4;
+	int cooldown = 90;
+	int max_cooldown = 90;
 
 	Rider *target = NULL;
 	Panel panel;
@@ -481,7 +480,7 @@ Rider Load_Rider(Map map, int tile_x, int tile_y, int health, float speed) {
 	rider.speed = speed;
 
 	rider.panel.health_max = health;
-	rider.panel.health_current = rider.panel.health_max;
+	rider.panel.health_current = health;
 
 	rider.panel.name = "Rider";
 	rider.panel.icon = al_load_bitmap("Bitmaps\\GameObjects\\Rider\\Rider_Icon.bmp");
@@ -1129,9 +1128,9 @@ int main(void)
 	Panel * active_panel = NULL;
 	Lab * active_lab = NULL;
 
-	int rider_count = 1;
-	int rider_speed = 2;
-	int rider_health = 50;
+	int rider_count = 20;
+	float rider_speed = 0.8;
+	int rider_health = 20;
 
 	
 	Rider current_rider;
@@ -1149,6 +1148,9 @@ int main(void)
 	int bups_s = 0;
 
 	float dist;
+
+	int kill_count = 0;
+	int money = 500;
 
 	int temp_x, temp_y;
 	int temp_t;
@@ -1444,16 +1446,29 @@ int main(void)
 			if (bunkers.empty() != true) {
 				for (list<Bunker>::iterator iter = bunkers.begin(); iter != bunkers.end(); iter++) {					
 					for (list<Rider>::iterator a = riders.begin(); a != riders.end(); a++) {
-						if ( sqrt((iter->pos_x - a->pos_x)*(iter->pos_x - a->pos_x) + (iter->pos_y - a->pos_y)*(iter->pos_y - a->pos_y))  <= iter->range * 50) {
-							iter->target = &*a;
+						if ( sqrt((iter->pos_x + 50 - a->pos_x)*(iter->pos_x + 50 - a->pos_x) + (iter->pos_y + 50 - a->pos_y)*(iter->pos_y + 50 - a->pos_y))  <= iter->range * 50) {
+							(&*iter)->target = &*a;
+							break;
 						}
-						else {
-							iter->target = NULL;
+						else if(&*iter->target != NULL) {
 							(&*iter)->target = NULL;
 						}
-						printf("%i %i \n", iter->target, (&*iter)->target);
-
 					}
+
+					if (iter->target != NULL && iter->target->panel.health_current > 0) {
+						if (iter->cooldown > 0) {
+							(&*iter)->cooldown = iter->cooldown--;
+						}
+						else if(iter->cooldown == 0){
+							*&iter->target->panel.health_current = *&iter->target->panel.health_current - 10;
+
+							(&*iter)->cooldown = 90;
+						}
+					}
+					else if (iter->target == NULL) {
+						(&*iter)->cooldown = 90;
+					}
+
 				}
 			}
 
@@ -1499,13 +1514,15 @@ int main(void)
 					if (iter->status_active == true && active_panel == nullptr) {
 						active_panel = &iter->panel;
 					}
-					if (iter->health_current == 0) {
+
+					if (iter->panel.health_current <= 0) {
 						if (active_rider == &*iter) {
 							Set_Rider_InActive(&*iter, active_rider);
 							active_rider = NULL;
 						}
 						Set_Panel_InActive(&(iter->panel));
 						iter = riders.erase(iter);
+						kill_count = kill_count++;
 					}
 					else if ((iter->path).empty()) {
 						if (active_rider == &*iter) {
@@ -1549,6 +1566,10 @@ int main(void)
 					current_rider = Load_Rider(map, map.s_x, map.s_y, rider_health, rider_speed);
 					buffor_riders.push_back(current_rider);
 				}
+
+				if (rider_count < 25) rider_count++;
+				if (rider_speed < 15) rider_speed = rider_speed + 0.25;
+				rider_health = rider_health + 0.25 * rider_health;
 			}
 
 			if ((clock.t == 0) && (clock.s % 2 == 1) && !(buffor_riders.empty()) ) {
@@ -1620,9 +1641,13 @@ int main(void)
 					Draw_Bunker(*iter, map, map_x, map_y);
 				}
 
-				if (&*iter->target != NULL) {
-					al_draw_line(iter->pos_x + map_x, iter->pos_y + map_y, iter->target->pos_x + map_x, iter->target->pos_y + map_y, al_map_rgb(0, 0, 0), 3);
+				if (&*iter->target != NULL && iter->target->panel.health_current > 0) {
+					al_draw_line(iter->pos_x + 50 + map_x, iter->pos_y + 10 + map_y, iter->target->pos_x + map_x + 25, iter->target->pos_y + map_y + 25, al_map_rgb(200, 200, 0), 3);
+					if (iter->cooldown >= 0 && iter->cooldown <= 30) {
+						al_draw_line(iter->pos_x + 50 + map_x, iter->pos_y + 10 + map_y, iter->target->pos_x + map_x + 25, iter->target->pos_y + map_y + 25, al_map_rgb(200, 0, 0), 3);
+					}
 				}
+
 			}
 
 			Draw_Interface(interface);
@@ -1641,6 +1666,8 @@ int main(void)
 
 			Draw_Timer(clock, font24);
 
+			al_draw_textf(font24, al_map_rgb(255, 255, 255), 300, 10, 0, "Kill count: %i", kill_count);
+			al_draw_textf(font24, al_map_rgb(255, 255, 255), 600, 10, 0, "Sources: %i", money);
 			Draw_Cursor(cursor);
 			al_flip_display();
 			al_clear_to_color(al_map_rgb(0, 0, 0));
