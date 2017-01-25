@@ -442,7 +442,7 @@ Cityhall Load_Cityhall(Map map, int healcost, int goblincost)
 	ALLEGRO_BITMAP *bitmap07 = al_load_bitmap("Bitmaps/Interface/Icons/Cityhall_Button7.bmp");
 
 	cityhall.panel = Load_Panel(bitmap00, NULL, NULL, NULL, NULL, NULL, bitmap07, NULL, NULL);
-	cityhall.panel.health_max = 1000;
+	cityhall.panel.health_max = 200;
 	cityhall.panel.health_current = cityhall.panel.health_max;
 	cityhall.panel.name = "City Hall";
 	cityhall.panel.button00.cost = goblincost;
@@ -451,7 +451,7 @@ Cityhall Load_Cityhall(Map map, int healcost, int goblincost)
 	al_convert_mask_to_alpha(cityhall.panel.icon, al_map_rgb(255, 0, 255));
 
 	cityhall.empty_panel = Load_Panel(NULL, NULL, NULL, NULL, NULL, NULL, bitmap07, NULL, NULL);
-	cityhall.empty_panel.health_max = 1000;
+	cityhall.empty_panel.health_max = cityhall.panel.health_max;
 	cityhall.empty_panel.health_current = cityhall.empty_panel.health_max;
 	cityhall.empty_panel.name = "City Hall";
 	cityhall.empty_panel.button20.cost = healcost;
@@ -1795,15 +1795,15 @@ int main(void)
 							(&*iter)->cooldown = 90;
 						}
 
-						if (iter->panel.dmg < iter->dmg + 2 * dmg) {
+						if (iter->panel.dmg <= iter->dmg + 2 * dmg) {
 							iter->panel.dmg = iter->panel.dmg + 2 * dmg;
 						}
 
-						if (iter->panel.range < iter->range + 0.1 * range) {
-							iter->panel.range = iter->panel.range + 0.1 *  range;
+						if (iter->panel.range <= iter->range + 0.15 * range) {
+							iter->panel.range = iter->panel.range + 0.15 *  range;
 						}
 
-						if (iter->panel.max_cooldown < iter->max_cooldown - 2 * cooldown) {
+						if (iter->panel.max_cooldown <= iter->max_cooldown - 2 * cooldown) {
 							iter->panel.max_cooldown = iter->panel.max_cooldown - 2 * cooldown;
 						}
 					}
@@ -1935,8 +1935,8 @@ int main(void)
 						}
 
 						if (rider_count < 25) rider_count++;
-						if (rider_speed < 15) rider_speed = rider_speed + 0.25;
-						rider_health = rider_health + 0.25 * rider_health;
+						if (rider_speed < 15) rider_speed = rider_speed + 0.15;
+						rider_health = rider_health + 0.15 * rider_health;
 					}
 					if ((clock.t == 0) && (clock.s % 2 == 1) && !(buffor_riders.empty())) {
 						current_rider = buffor_riders.front();
@@ -1953,8 +1953,8 @@ int main(void)
 						}
 
 						if (rider_count < 25) rider_count++;
-						if (rider_speed < 15) rider_speed = rider_speed + 0.25;
-						rider_health = rider_health + 0.25 * rider_health;
+						if (rider_speed < 15) rider_speed = rider_speed + 0.20;
+						rider_health = rider_health + 0.20 * rider_health;
 					}
 					if ((clock.t == 0) && !(buffor_riders.empty())) {
 						current_rider = buffor_riders.front();
